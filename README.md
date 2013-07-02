@@ -11,15 +11,17 @@ So at the moment it has
 <ul>
   <li> AJAX </li>
   <li> Animations </li>
-  <li> Some Ui elements </li>
-  <li> works with IE 8+, Chrome 3+ firefox 3+ and safari 3+ </li>
+  <li> Some UI elements </li>
+  <li> Works with IE 8+, Chrome 3+ firefox 3+ and safari 3+ </li>
 </ul>
+
+I'll be putting up a website for it later, this month... (a bit busy) 
 
 
 
 The Selectors are very simular to jQuerys ones... so for example
 <pre><code>
-bright("#id").toggle();
+  bright("#id").toggle();
 </code></pre>
 
 
