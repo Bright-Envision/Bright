@@ -17,22 +17,43 @@
 		{
 			//Initialize....
 			//the selectors	
-			if (selector == undefined)
-			{
-				this[0] = window;
+			 if (!selector) {
 				return this;
 			}
 			
+			
+			
+			if (selector === "body" && !context && document.body) {				
+				this[0] = document.body;							
+				return this;
+			}
+			
+			var elementArray = Array(); //houses the multiple elements				
 			if (typeof selector === "object")
 			{				
-				this[0] = selector;
-				this.selector = "window";
-				return this;	
+				if (selector.length > 0)
+				{
+					if (typeof selector == 'object'){						
+						this[0] = selector;
+						return this;
+					}
+					else if ((typeof selector==="object") &&(selector.nodeType===1) && (typeof selector.style === "object") && (typeof selector.ownerDocument ==="object"))
+					{
+						alert('test');
+					}				
+				}
+				else
+				{
+					if (selector[0])
+					{
+						this[0] = selector[0];
+						return this;
+					}
+				}
 			}
 			else if (selector.indexOf(" ") !== -1)
 			{
-				//spaces in the code... for example bright(".class span").click...
-				var elementArray = Array(); //houses the multiple elements
+				//spaces in the code... for example bright(".class span").click...				
 				var split = selector.split(/[ :]+?/g);					
 				if (split[0].charAt(0) === "#")
 				{
@@ -56,14 +77,15 @@
 							var peices = split[2].split(/\(/g);
 							if (peices[0] == "nth-child")
 							{
-								var num = peices[1].replace(')', '');										
-								this[0] = elementArray[parseInt(num)];
+								var num = peices[1].replace(')', '');	
+								elementArray = [elementArray[parseInt(num)]];
+								this[0] = elementArray;
 								return this; 
 								
 							}
 						}
-						if (elementArray.length < 1){
-							this[0] = elementArray[0];
+						if (elementArray.length < 1){							
+							this[0] = elementArray;
 							return this;
 						}
 						this[0] = elementArray;
@@ -99,8 +121,9 @@
 									var peices = split[2].split(/\(/g);
 									if (peices[0] == "nth-child")
 									{
-										var num = peices[1].replace(')', '');										
-										this[0] = elementArray[parseInt(num)];
+										var num = peices[1].replace(')', '');	
+										elementArray = [elementArray[parseInt(num)]];
+										this[0] = elementArray;
 										return this; 
 										
 									}
@@ -212,7 +235,8 @@
 			{
 				//get ids
 				var ele = document.getElementById(selector.slice(1));
-				this[0] = ele;
+				elementArray.push(ele);
+				this[0] = elementArray;
 				return this;
 			}
 			else if (selector.charAt(0) === ".")
@@ -229,7 +253,49 @@
 				}
 				this[0] = elements;
 				return this;
-			}				
+			}
+			else
+			{
+				
+				//must just want tags...
+				var split = selector,
+				elementArray = Array();
+				if (selector.indexOf(":") != -1)
+				{
+					var split = selector.split(/[ :]+?/g);					
+					var ele = el.getElementsByTagName(split[0]);
+				}
+				else
+				{
+						var ele = document.body.getElementsByTagName(selector);
+				}
+				 //this will return a node list so we will sort out the node list into an array before we return it.
+				 for (var i = 0; i < ele.length; i++)
+				 {
+					 elementArray.push(ele[i]);
+				 }							
+				 if (elementArray)
+				 {
+					if (split[1])
+					{
+						var peices = split[1].split(/\(/g);
+						if (peices[0] == "nth-child")
+						{
+							var num = peices[1].replace(')', '');										
+							this[0] = elementArray[parseInt(num)];
+							return this; 
+							
+						}
+					}
+					this[0] = elementArray;
+					return this;
+				 }
+				 else
+				 {
+					 return this;
+				 }
+			}
+			
 		},
 		show: function()
 		{
@@ -509,16 +575,8 @@
 			return this;
 	      },
 		  fadeOut: function()
-		  {		  	
-			if (this[0].length > 1)
-			{
-				var e = this[0];
-				for (var i = 0; i < e.length; i++)
-				{
-					bright(e[i]).fadeOut();
-				}
-			}
-			var element = this[0][0];//this is the right element we have
+		  {				
+			bright(this[0]).each(function(i, element){
 				var op = 1.0;  // initial opacity				
 				var FadeOutTimer = setInterval(function () {					
 					if (op <= 0.1){	
@@ -532,7 +590,8 @@
 					element.style.filter = 'alpha(opacity=' + op * 100 + ")";					
 						
 					op -= 0.1;
-				}, 50);
+				}, 100);
+			});
 			return this;
 		  },
 		  fadeIn: function()
@@ -552,12 +611,11 @@
 				var timer = setInterval(function () {
 					if (op >= 1.0){
 						clearInterval(timer);						
-					}
-					console.log(op);
+					}					
 					element.style.opacity = op;
 					element.style.filter = 'alpha(opacity=' + op * 100 + ")";
 					op += 0.1;
-				}, 50);
+				}, 100);
 			return this;
 		  },
 		  fadeToggle: function()
@@ -677,30 +735,39 @@
 				}
 			 return this;
 		  },
-		  validate: function(fun)
+		  validate: function(borders, options, fun)
 		  {
+		  	var border = false,
+		  	color = "";
+		  	if ((typeof borders == "boolean")&&(borders == true))
+		  	{
+			  	//wants a border and stuff...
+			  	border = true;
+			  	color = options.color;
+		  	}
 			//this will  validate any form that gets inserted into it... it will be able to check if the user has put some values in... Simple Validate
-			if (this[0].length > 0 && typeof this[0] != "object")
+			if (this[0].length > 0)
 				{
 					var ele = this[0];
 						for (var i = 0; i < ele.length; i++){
-							bright(ele[i]).validate(fun);
+							bright(ele[i]).validate(options, fun);
 						}
 
 				}
 				else
 				{
+					
 					var follow = true;
 					var inputsElements = Array();
 					var inputs = this[0].getElementsByTagName('input');
-					var returnElements = Array();
+					
 					for (var i = 0; i < inputs.length; i++){
 						var type = inputs[i].type.toUpperCase();					
 						inputsElements.push(inputs[i]);				
 						if (type == "SUBMIT"){											
 							bright(inputs[i]).click(function(e){
 								//the base click function...			
-								
+								var returnElements = [];
 								e.preventDefault();
 									
 								for (var s = 0; s < inputsElements.length;s++)
@@ -708,10 +775,30 @@
 									type = inputsElements[s].type.toUpperCase();												
 									var filter = ((type == "CHECKBOX") || (type == "RADIO") || (type == "SUBMIT"));//filters out the ones we cant check...									
 									if (!filter) //checks if all the filtering worked
-										{																		
-											if (inputsElements[s].value == "" || inputsElements[s].value == undefined)
-											{										
-												returnElements.push(inputsElements[s]);
+										{	
+											if ((inputsElements[s].value == undefined)||(inputsElements[s].value == "")){										
+												if (inputsElements[s].value.length < 1)
+												{	
+													if (border)
+													{
+														bright(inputsElements[s]).css('border', '2px inset '+color+'');												
+													}									
+													returnElements.push(inputsElements[s]);
+												}	
+												else
+												{
+													if (border)
+													{
+														bright(inputsElements[s]).css('border', '2px inset');												
+													}			
+												}											
+											}
+											else
+											{
+												if (border)
+												{
+													bright(inputsElements[s]).css('border', '2px inset');												
+												}			
 											}									
 										}
 								}
@@ -729,7 +816,7 @@
 				return this;
 			},
 			html: function(text)
-			{
+			{				
 				if (this[0].length > 0)
 				{
 					var ele = this[0];
@@ -755,24 +842,47 @@
 				lightbox(this);
 				return this;
 			}, 
+			removeClass: function(value)
+			{				
+				var name = "";
+				if (value && typeof value === "string") {
+					bright(this[0]).each(function(i, element){
+						if (element.className)
+						{
+							var splitName = element.className.split(' '); //split on the space
+							for (var i = 0; i < splitName.length; i++)
+							{
+								if (splitName[i] != value)
+								{
+									name += splitName[i]+" ";
+								}								
+							}
+							element.className = name;
+						}
+					});
+				}
+				return this;
+			},
 			animate: function(properties, options)
 			{			
 				Animation(this, properties, options);
 				return this;
 			},
 			parent: function()
-			{	
+			{			
+				var ElementArray = Array();
 				if (this[0].length > 0)
 				{
 					for (var i = 0; i < this[0].length; i++)
 					{
-						this[0] = this[0][i].parentNode;	
+						ElementArray.push(this[0][i].parentNode);	
 					}
 				}
 				else
 				{
-					this[0] = this[0].parentNode;	
+					ElementArray.push(this[0].parentNode);	
 				}
+				this[0] = ElementArray;
 				return this;
 			},
 			attr: function(attribute, value)
@@ -781,14 +891,21 @@
 				{					
 					if (value)
 					{
-						this[0].setAttribute(attribute, value); //= value										
+						bright(this[0]).each(function(i, elem){
+							elem.setAttribute(attribute, value); //= value	
+						});
 						return this;
 					}
 					else
 					{
-						return this[0].getAttribute(attribute);
+						var returnvalue = Array();
+						bright(this[0]).each(function(i, elem){							
+							returnvalue.push(elem.getAttribute(attribute));				
+						});	
+						return returnvalue;
 					}
-				}				
+				}
+				return this;
 			},
 			fileUpload: function(options)
 			{			
@@ -830,7 +947,7 @@
 											},
 											progress: function(data)
 											{
-												console.log(data);
+												
 											}
 										});
 									}
@@ -861,84 +978,47 @@
 				var dragover = options.enter;
 				var dragleave = options.leave;		
 			
-			
-				if (this[0].length > 1)
-				{
-					for (var i = 0; i < this.length; i++){
-						this[0][i].addEventListener('drop', filehandler, false);
-						this[0][i].addEventListener('dragover', dragover, false);	
-						this[0][i].addEventListener('dragexit', dragleave, false);	
-					}
-				}
-				else
-				{
-					this[0][0].addEventListener('drop', options.filehandler, false);
-					this[0][0].addEventListener('dragover', options.enter, false);	
-					this[0][0].addEventListener('dragexit', options.leave, false);				
-				}
+				bright(this[0]).each(function(i, elem){					
+					elem.addEventListener('drop', options.filehandler, false);
+					elem.addEventListener('dragover', options.enter, false);	
+					elem.addEventListener('dragexit', options.leave, false);					
+				});
 				return this;
 			},
 			css: function(styleName, value)
-			{
-				if (this[0].length > 1){
-					for (var i = 0; i < this[0].length; i++){
-						if (typeof styleName == 'object')
-						{
-							for (var prop in styleName) {
-								  if (styleName.hasOwnProperty(prop)) {			  	
-									  this[0][i].style[prop] = styleName[prop];						  
-								 }
-							 }
-						}
-						else
-						{
-							 if (styleName)
-							  {
-								  this[0][i].style[styleName] = value;
-							  }
-							  else
-							  {
-								if (!value)
-								  return this[0][i].style.styleName;
-							  }
-						}
-					}
-				}
-				else
-				{				
+			{			
+				bright(this[0]).each(function(i, element){
+					console.log(element);
+					if (!element == undefined)
+						return false;
+						
 					if (typeof styleName == 'object')
 					{
 						for (var prop in styleName) {
 							  if (styleName.hasOwnProperty(prop)) {			  	
-								  this[0].style[prop] = styleName[prop];						  
+								  element.style[prop] = styleName[prop];						  
 							 }
 						 }
 					}
 					else
 					{
-						 if (value)
-						  {
-							if (this[0]){
-							  this[0].style[styleName] = value;
-							}
-							else
-							{
-								this[0][0].style[styleName] = value;
-							}
-						  }
-						  else
-						  {							
-								if (this[0])
-									return this[0][0].style.styleName;
-							
-						  }
-					}				
-				}
+					 if (styleName)
+					  {
+						if (!value){								
+						  return element.style[styleName];
+						} 
+						else
+						{							
+						 element.style[styleName] = value;
+						}
+					  }					 
+					}	
+				});				
 			  return this;
 			},
 			remove: function()
-			{			
-				if (this[0].length > 0)
+			{					
+				if (this[0].length)
 				{
 					for (var i = 0; i < this[0].length; i++){
 						var parent = bright(this[0][i]).parent()[0];					
@@ -947,33 +1027,38 @@
 				}
 				else
 				{
-					var parent = bright(this[0]).parent()[0];					
+					var parent = bright(this[0]).parent()[0][0];							
 						parent.removeChild(this[0]);
 				}
-				
+							
 				return this;
 			},
-			addClass: function()
-			{
-			   if (this[0].length > 0)
-				{
-					for (var i = 0; i < this[0].length; i++){
-						var parent = bright(this[0][i]).parent()[0];					
-						parent.removeChild(this[0][i]);
-					}
+			addClass: function(value)
+			{	
+				console.log(this);
+				var name = "";
+				if (value && typeof value === "string") {
+					bright(this[0]).each(function(i, element){						
+						if (element.tagName)
+						{							
+							var splitName = element.className.split(' '); //split on the seperator between the classNames
+							for (var i = 0; i < splitName.length; i++)
+							{								
+								if (splitName[i].length < 1)
+								{
+									name += value;
+								}
+								else
+								{
+									name += splitName[i]+" "+value;
+								}
+							}
+							element.className = name;
+						}
+					});
 				}
-				else
-				{
-					var parent = bright(this[0]).parent()[0];					
-						parent.removeChild(this[0]);
-				}
-				
 				return this;
-			},
-			type: function(obj)
-			{
-				return obj == null ? String(obj) : Class2type[toString.call(obj)] || "object";
-			},
+			},			
 			text: function(obj)
 			{
 				
@@ -994,8 +1079,58 @@
 			},
 			append: function(html)
 			{				
-				this[0].appendChild(html);
+				return this[0].appendChild(html);				
+			},
+			findChild: function(elemName)
+			{			
+				var child = [];				
+				if (elemName.charAt(0) == "."){
+					//classes						
+					bright(this[0]).each(function(s, elem){						
+						var elem = elem.getElementsByTagName('*');
+						for (var i = 0; i < elem.length; i++)
+						{							
+							if (elem[i].className == elemName.substr(1, elemName.length))
+							{
+								child.push(elem[i]);							
+							}
+						}
+					});
+				}				
+				else
+				{					
+					var elem = this[0].getElementsByTagName('*');
+					for (var i = 0; i < elem.length; i++)
+					{						
+						if (elem[i].tagName == elemName.toUpperCase())
+						{
+							child.push(elem[i]);							
+						}
+					}
+				}
+				this[0] = child;
 				return this;
+			},
+			hover: function(func, func1)
+			{
+				if (this[0].length > 0)
+				{										
+					for (var i = 0; i < this[0].length; i++){
+						this[0][i].addEventListener("mouseover", func, false);
+						if (func2)
+							this[0][i].addEventListener("mouseout", func1, false);
+					}
+				}
+				else
+				{					
+					this[0].addEventListener("mouseover", func, false);
+					if (func1)
+						this[0].addEventListener('mouseout', func1, false);
+				}
+			},
+			each: function(callback, args)
+			{		
+				return bright.each(this[0], callback, args);
 			}
 }
 				
@@ -1083,11 +1218,75 @@ bright.inArray = function(array, value)
 	return returnValue;
 }
 
-bright.fn.effects = function()
+bright.isFunction = function(obj)
 {
-	return this;
-};
+	return typeof obj === "function";
+}
 
+bright.trim = function(text)
+{	
+    return text == null ? "" : trim.call(text);
+}
+
+
+bright.each = function(obj, callback, args)
+{
+	if (!obj){		
+		return;
+	}
+	
+	var name,
+	length = obj.length,
+	isObj = (typeof obj === "object");
+	
+	if (args)
+	{
+		if (isObj)
+		{		
+			for (name in obj)
+			{				
+				if (callback.apply(obj[name], args) === false)
+				{
+					break;
+				}
+			}		
+		}
+		else
+		{
+			for (var i = 0; i < length; i++)
+			{
+				if (callback.apply(obj[i++], args) === false)
+				{
+					break;
+				}
+			}
+		}	
+	}
+	else
+	{
+		if (isObj)
+		{
+			for (name in obj)
+			{			
+				if (callback.call(obj[name], name, obj[name]) === false)
+				{
+					break;
+				}
+			}		
+		}
+		else
+		{
+			for (var i = 0; i < obj.length;)
+			{				
+				if (callback.call(obj[i], i, obj[i++]) === false)
+				{
+					break;
+				}
+			}
+		}
+	}
+	return obj;
+}
 
 function lightbox(ele)
 {
@@ -1280,8 +1479,7 @@ function Animation(elem, properties, options)
 				
 			if (queue.length < 1)
 			{
-				clearInterval(animationTimer);
-				console.log('ending');
+				clearInterval(animationTimer);		
 			}			
 		}, speed);
 	}
@@ -1299,6 +1497,7 @@ bright.ajax = function(options, parms)
 	}
 	
 	var options = bright.extend(options, defaults);	
+	
 	//main ajax call function...
 	var xhr = new XMLHttpRequest();		
 		if (options.type.toUpperCase() == "GET")
