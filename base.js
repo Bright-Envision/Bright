@@ -1,37 +1,65 @@
 /*! 
-*  Bright JavaScript Library v1.0
-*   Author: Ryan Clough	
+*  Bright JavaScript Library v1.2
+*  Author: Ryan Clough	
 */
 
 (function( window, undefined ) {
-	var version = 1.0,
+	var version = 1.2,
 	isready = false,
-	queue = [];
+	queue = [],
+	document = window.document,
+	navigator = window.navigator,
+	location = window.location,
+	rmsPrefix = /^-ms-/,
+	// regedit values
+	rdashAlpha = /-([a-z]|[0-9])/ig,
+	rmsPrefix = /^-ms-/,
+	isSimple = /^.[^:#\[\.,]*$/,
+	// Save a reference to some core methods
+	toString = Object.prototype.toString,
+	hasOwn = Object.prototype.hasOwnProperty,
+	push = Array.prototype.push,
+	slice = Array.prototype.slice,
+	trim = String.prototype.trim,
+	indexOf = Array.prototype.indexOf,	
+	// Used by bright.camelCase as callback to replace()
+	fcamelCase = function( all, letter ) {
+		return ( letter + "" ).toUpperCase();
+	},
+	
 	bright = function( selector, context ) {		
-		return new bright.fn.inti(selector, context);		
+		return new bright.fn.init(selector, context);		
 	};
 
 	
 	bright.fn = bright.prototype = {
-		inti:function(selector, context)
-		{
+		init:function(selector, context)
+		{	
+			/* 						*\
+					Selector
+			\* 						*/
+			
 			//Initialize....
 			//the selectors	
 			 if (!selector) {
 				return this;
-			}
-			
-			
-			
-			if (selector === "body" && !context && document.body) {				
-				this[0] = document.body;							
+			}	
+					
+			this.selector = selector;
+			this.context = document;
+			this.length = 1;
+			var elementArray = Array(); //houses the multiple elements		
+			if (selector === "body" && !context && document.body) {		
+				elementArray.push(document.body);
+				this[0] = elementArray;
 				return this;
-			}
+			}		
 			
-			var elementArray = Array(); //houses the multiple elements				
+			
+					
 			if (typeof selector === "object")
-			{				
-				if (selector.length > 0)
+			{
+		    	if (selector.length > 0)
 				{
 					if (typeof selector == 'object'){						
 						this[0] = selector;
@@ -40,18 +68,28 @@
 					else if ((typeof selector==="object") &&(selector.nodeType===1) && (typeof selector.style === "object") && (typeof selector.ownerDocument ==="object"))
 					{
 						alert('test');
-					}				
+					}
+					else
+					{
+						alert('test1');
+					}
 				}
 				else
-				{
+				{				
 					if (selector[0])
 					{
 						this[0] = selector[0];
 						return this;
 					}
+					else
+					{
+						elementArray.push(selector);
+						this[0] = elementArray;
+						return this;
+					}
 				}
 			}
-			else if (selector.indexOf(" ") !== -1)
+			else if (selector.indexOf(" ") !== -1 && typeof selector === 'string')
 			{
 				//spaces in the code... for example bright(".class span").click...				
 				var split = selector.split(/[ :]+?/g);					
@@ -296,6 +334,10 @@
 				 }
 			}
 			
+		},
+		constructor: function (selector, context) 
+		{
+			return new bright.fn.init(selector, context);		
 		},
 		show: function()
 		{
@@ -863,14 +905,155 @@
 				}
 				return this;
 			},
-			animate: function(properties, options)
-			{			
-				Animation(this, properties, options);
-				return this;
+			is: function (selector) {				
+				return !!selector && (typeof selector === "string" ? bright.filter(selector, this).length > 0 : this.filter(selector).length > 0);
+			},
+			filter: function (selector) {
+				return this.pushStack(winnow(this, selector, true), "filter", selector);
+			},
+			animate: function(prop, speed, easing, callback)
+			{				
+				var optall = bright.speed( speed, easing, callback );
+				if ( bright.isEmptyObject( prop ) ) {
+					return this.each( optall.complete, [ false ] );
+				}
+		
+				// Do not change referenced properties as per-property easing will be lost
+				prop = bright.extend( {}, prop );				
+				
+				function doAnimation()
+				{
+					// XXX 'this' does not always have a nodeName when running the
+					// test suite
+					
+					if ( optall.queue === false ) {
+						bright._mark( this );
+					}
+
+					var opt = bright.extend( {}, optall ),
+						isElement = this.nodeType === 1,
+						hidden = isElement && bright(this[0]).is(":hidden"),
+						name, val, p, e, hooks, replace,
+						parts, start, end, unit,
+						method;
+					
+					// will store per property easing and be used to determine when an animation is complete
+					opt.animatedProperties = {};
+
+					// first pass over propertys to expand / normalize
+					for ( p in prop ) {
+						name = bright.camelCase( p );
+						if ( p !== name ) {
+							prop[ name ] = prop[ p ];
+							delete prop[ p ];
+						}
+
+						if ( ( hooks = bright.cssHooks[ name ] ) && "expand" in hooks ) {
+							replace = hooks.expand( prop[ name ] );
+							delete prop[ name ];
+
+							// not quite $.extend, this wont overwrite keys already present.
+							// also - reusing 'p' from above because we have the correct "name"
+							for ( p in replace ) {
+								if ( ! ( p in prop ) ) {
+									prop[ p ] = replace[ p ];
+								}
+							}
+						}
+					}
+
+					for ( name in prop ) {
+						val = prop[ name ];
+						// easing resolution: per property > opt.specialEasing > opt.easing > 'swing' (default)
+						if ( bright.isArray( val ) ) {
+							opt.animatedProperties[ name ] = val[ 1 ];
+							val = prop[ name ] = val[ 0 ];
+						} else {
+							opt.animatedProperties[ name ] = opt.specialEasing && opt.specialEasing[ name ] || opt.easing || 'swing';
+						}
+
+						if ( val === "hide" && hidden || val === "show" && !hidden ) {
+							return opt.complete.call( this );
+						}
+
+						if ( isElement && ( name === "height" || name === "width" ) ) {
+							// Make sure that nothing sneaks out
+							// Record all 3 overflow attributes because IE does not
+							// change the overflow attribute when overflowX and
+							// overflowY are set to the same value
+							opt.overflow = [ this.style.overflow, this.style.overflowX, this.style.overflowY ];
+
+							// Set display property to inline-block for height/width
+							// animations on inline elements that are having width/height animated
+							if ( bright.css( this, "display" ) === "inline" &&
+									bright.css( this, "float" ) === "none" ) {
+
+								// inline-level elements accept inline-block;
+								// block-level elements need to be inline with layout
+								if ( !bright.support.inlineBlockNeedsLayout || defaultDisplay( this.nodeName ) === "inline" ) {
+									this.style.display = "inline-block";
+
+								} else {
+									this.style.zoom = 1;
+								}
+							}
+						}
+					}
+
+					if ( opt.overflow != null ) {
+						this.style.overflow = "hidden";
+					}
+
+					for ( p in prop ) {						
+						e = new bright.fx( this, opt, p );
+						val = prop[ p ];
+
+						if ( rfxtypes.test( val ) ) {
+
+							// Tracks whether to show or hide based on private
+							// data attached to the element
+							method = bright._data( this, "toggle" + p ) || ( val === "toggle" ? hidden ? "show" : "hide" : 0 );
+							if ( method ) {
+								bright._data( this, "toggle" + p, method === "show" ? "hide" : "show" );
+								e[ method ]();
+							} else {
+								e[ val ]();
+							}
+
+						} else {
+							parts = rfxnum.exec( val );
+							start = e.cur();
+
+							if ( parts ) {
+								end = parseFloat( parts[2] );
+								unit = parts[3] || ( bright.cssNumber[ p ] ? "" : "px" );
+
+								// We need to compute starting value
+								if ( unit !== "px" ) {
+									bright.style( this, p, (end || 1) + unit);
+									start = ( (end || 1) / e.cur() ) * start;
+									bright.style( this, p, start + unit);
+								}
+
+								// If a +=/-= token was provided, we're doing a relative animation
+								if ( parts[1] ) {
+									end = ( (parts[ 1 ] === "-=" ? -1 : 1) * end ) + start;
+								}
+
+								e.custom( start, end, unit );
+
+							} else {
+								e.custom( start, val, "" );
+							}
+						}
+					}
+					return true;
+				}			
+				return optall.queue === false ? this.each( doAnimation ) : this.queue( optall.queue, doAnimation );
 			},
 			parent: function()
 			{			
-				var ElementArray = Array();
+				var ElementArray = [];
 				if (this[0].length > 0)
 				{
 					for (var i = 0; i < this[0].length; i++)
@@ -984,38 +1167,7 @@
 					elem.addEventListener('dragexit', options.leave, false);					
 				});
 				return this;
-			},
-			css: function(styleName, value)
-			{			
-				bright(this[0]).each(function(i, element){
-					console.log(element);
-					if (!element == undefined)
-						return false;
-						
-					if (typeof styleName == 'object')
-					{
-						for (var prop in styleName) {
-							  if (styleName.hasOwnProperty(prop)) {			  	
-								  element.style[prop] = styleName[prop];						  
-							 }
-						 }
-					}
-					else
-					{
-					 if (styleName)
-					  {
-						if (!value){								
-						  return element.style[styleName];
-						} 
-						else
-						{							
-						 element.style[styleName] = value;
-						}
-					  }					 
-					}	
-				});				
-			  return this;
-			},
+			},			
 			remove: function()
 			{					
 				if (this[0].length)
@@ -1034,8 +1186,7 @@
 				return this;
 			},
 			addClass: function(value)
-			{	
-				console.log(this);
+			{				
 				var name = "";
 				if (value && typeof value === "string") {
 					bright(this[0]).each(function(i, element){						
@@ -1131,360 +1282,1350 @@
 			each: function(callback, args)
 			{		
 				return bright.each(this[0], callback, args);
-			}
+			},
+			bright: 1.2
 }
-				
-				
-					
-		  
 	
-	
-// Give the init function the bright prototype for later instantiation	
-bright.fn.inti.prototype = bright.fn;
-	
-//expose the bright Library to the DOM
-window.bright = window.$ = bright;
 
-bright.extend = bright.fn.extend = function(obj1, target, deep){
-		var src, options, copy, copyIsArray;
+// Give the init function the bright prototype for later instantiation	
+bright.fn.init.prototype = bright.fn;
+	
+bright.extend = bright.fn.extend = function(){
+		//from bright 1.7.2
+		var options, name, src, copy, copyIsArray, clone,
+		target = arguments[0] || {},
+		i = 1,
+		length = arguments.length,
+		deep = false;
 		
-		if (typeof deep == 'boolean')
-		{
-			deep = true;			
+		if (typeof target === "boolean") {
+			deep = target;		
+			 target = arguments[1] || {};
+			// skip the boolean and the target
+			i = 2;
 		}
+
 		
-		if (typeof target !== "object" && typeof target != "function")
+		if (typeof target !== "object" && !bright.isFunction(target))
 		{
 			target = {};
 		}		
 		
-		//console.log(obj1, target);
-		//this is a good utility as it will merge objects together...
-		//Also target gets merged with the other one...
-		var obj3 = {};		
-		for (options in obj1)
-		{			
-			options = obj1;			
-			for (name in options)
-			{
-				src = target[name];
-				copy = options[name];				
-				if (target === copy)
-				{	
-					continue;
-				}				
-				
-				if (deep && copy && (copyIsArray = bright.isArray(copy)))
-				{
-					if (copyIsArray)
-					{
-						copyIsArray = false;
-						clone = src && bright.isArray(src) ? src : [];
-					}
-					else
-					{
-						clone = src && bright.isArray(src) ? src : {};
-					}	
-					
-					target[name] = bright.extend(deep, clone, copy);
-				}
-				else if (copy != undefined)				
-				{					
-					target[name] = copy;
-				}
-			
-			}
-			if (target){				
-				return target;
-			}
-		}
-};
-
-bright.isArray = function(src)
-{
-	return typeof src == "array"? true : false
-}
-
-bright.inArray = function(array, value)
-{
-	var returnValue = -1;
-	for (var i = 0; i < array.length; i++)
-	{
-		if (array[i] == value)
-		{
-			returnValue = i;
-		}
-	}
-	return returnValue;
-}
-
-bright.isFunction = function(obj)
-{
-	return typeof obj === "function";
-}
-
-bright.trim = function(text)
-{	
-    return text == null ? "" : trim.call(text);
-}
-
-
-bright.each = function(obj, callback, args)
-{
-	if (!obj){		
-		return;
-	}
-	
-	var name,
-	length = obj.length,
-	isObj = (typeof obj === "object");
-	
-	if (args)
-	{
-		if (isObj)
-		{		
-			for (name in obj)
-			{				
-				if (callback.apply(obj[name], args) === false)
-				{
-					break;
-				}
-			}		
-		}
-		else
-		{
-			for (var i = 0; i < length; i++)
-			{
-				if (callback.apply(obj[i++], args) === false)
-				{
-					break;
-				}
-			}
-		}	
-	}
-	else
-	{
-		if (isObj)
-		{
-			for (name in obj)
-			{			
-				if (callback.call(obj[name], name, obj[name]) === false)
-				{
-					break;
-				}
-			}		
-		}
-		else
-		{
-			for (var i = 0; i < obj.length;)
-			{				
-				if (callback.call(obj[i], i, obj[i++]) === false)
-				{
-					break;
-				}
-			}
-		}
-	}
-	return obj;
-}
-
-function lightbox(ele)
-{
-	 imglink = bright(ele).parent().attr('href');
-	 var backing = document.createElement('div');
-	  backing.style.backgroundColor = "rgb(0,0,0)";	
-	  backing.style.opacity = 0.75;
-	  backing.style.filter = 'alpha(opacity=70)';
-	  backing.style.width = "100%";
-	  backing.style.height = "100%";
-	  backing.style.margin = "0";				  	  
-	  backing.style.padding = "0";
-	  backing.style.zIndex = "999999";	//just so it goes all the other elements except the image preview box	
-	  backing.style.position = "fixed";				 
-	  backing.style.top = "0px";
-	  backing.style.left = "0px";	  	  
-  document.body.appendChild(backing);			
-  
-  var loading = document.createElement('img');
-	  loading.src = 'images/loading.gif';
-	  loading.width = "128";
-	  loading.height = "128";
-	  loading.style.position = "fixed";
-	  loading.style.background = "#fff";
-	  loading.style.left = "45%";
-	  loading.style.top = "45%";
-	  loading.style.zIndex = "999999999"
-	 document.body.appendChild(loading);
-  
-  var ele = document.createElement('img');
-	  ele.style.padding = "20px"; //Just some styling
-	  ele.style.backgroundColor = "#fff";
-	  ele.style.position = "fixed";
-	  ele.style.cursor = "pointer";	
-	  ele.style.zIndex = "9999999";	//just so it goes all the other elements			  	  			  	  
-	  ele.src = imglink; //gets the img tag src and adds it to the new one...
-	  ele.style.top = "-5000px"; //takes it off the screen so it wont show up on the screen
-	  ele.style.left = "-5000px";	//the same as above  	
-	  ele.onclick = function(){
-		bright(ele).remove();
-		bright(backing).remove()
-	}; //when it gets clicked it removes it self...
-	  backing.onclick = function(){
-		   bright(ele).remove();
-		   bright(loading).remove();		  	   
-		   bright(backing).remove(); //when it gets clicked it removes it self...
-	  }	
-	  
-	  
-	  //hmmm add a loading gif...
-	  
-	 var img = new Image;
-	 img.src = imglink;	    	  	
-	
-  document.body.appendChild(ele); //Appends element to add
-  img.onload = function(){ //waits until the img has loaded correctly and then centers it
-	 if ((img.width > window.innerWidth)||(img.height > window.innerHeight)) //resize it...
-	 {
-		ele.style.width = "50%"; //resizes the image to half of its original size
-		ele.style.height = "auto";
-	 }
-	 bright(loading).hide();
-	 
-	 bright(ele).center();	//Centers the element		
-	 
-  } 
-  
-  window.onresize = function()
-  {
-	 bright(ele).center();
-  } 
-}
-
-function Animation(elem, properties, options)
-{	
-	var speed = options;
-	if (typeof speed == "string")
-	{
-		if (speed == "fast")
-		speed = 10;
-		
-		if (speed == "medium")
-		speed = 30;
-		
-		if (speed == "slow")
-		speed = 50;
-	}
-	else
-	{
-		speed = 20;
-	}		
-	
-	var animatingLeft = false, 
-	animatingTop = false,
-	animatingRight = false;
-	
-	if (!elem || !properties)
-		return elem;
-		
-	if (typeof properties === "object")
-	{
-		var properties = properties;
-		var topPoint = new Object;	
-		if ((properties.left)||(properties.right)||(properties.top))
-		{
-			if (properties.left)	
-			{
-				var QueueIDLeft = Math.round(Math.random(0) * 100);
-				queue.push(QueueIDLeft);
-			}	
-			if (properties.top)	
-			{
-				var QueueIDTop = Math.round(Math.random(0) * 100);
-				queue.push(QueueIDTop);
-			}
-			
-			if (properties.Right)				
-			{
-				var QueueIDRight = Math.round(Math.random(0) * 100);
-				queue.push(QueueIDRight);				
-			}
+	    if (length === i) {
+			target = this;
+			--i;
 		}		
-		var windowoffset = Math.round((window.innerWidth)/(elem[0].offsetWidth));			
-		var animationTimer = setInterval(function()
-		{
-			if (elem[0].style.position != "absolute")
-			{				
-				clearInterval(animationTimer);
-				return;
-			}			
-			if ((properties.left)||(properties.right)||(properties.top))
-			{
-				if (properties.left)				
-					topPoint.Left = elem[0].offsetLeft;
-					
-				if (properties.top)				
-					topPoint.Top = elem[0].offsetTop;
-				
-				if (properties.right)				
-					topPoint.Right = elem[0].offsetLeft + elem[0].offsetWidth;
-			}				
-			
-			if (properties.left){
-				if ( properties.left >= topPoint.Left){
-					animatingLeft = true;
-					elem[0].style.left = ((topPoint.Left + 10) + 'px');					
-					if (topPoint.Left >= (properties.left-10))
-					{
-						var index = bright.inArray(queue,QueueIDLeft);							
-						queue.splice(index, 1);						
-					}					
+		for (; i < length; i++) {
+			// Only deal with non-null/undefined values
+			if ((options = arguments[i]) != null) {
+				// Extend the base object
+				for (name in options) {
+					src = target[name];
+					copy = options[name];
+
+					// Prevent never-ending loop
+					if (target === copy) {
+						continue;
+					}
+
+					// Recurse if we're merging plain objects or arrays
+					if (deep && copy && (bright.isPlainObject(copy) || (copyIsArray = bright.isArray(copy)))) {
+						if (copyIsArray) {
+							copyIsArray = false;
+							clone = src && bright.isArray(src) ? src : [];
+
+						} else {
+							clone = src && bright.isPlainObject(src) ? src : {};
+						}
+
+						// Never move original objects, clone them
+						target[name] = bright.extend(deep, clone, copy);
+
+						// Don't bring in undefined values
+					} else if (copy !== undefined) {
+						target[name] = copy;
+					}
 				}
-				else if (!animatingLeft)
+			}
+		}
+
+    // Return the modified object
+    return target;
+}
+
+/* 				*\
+	Base tools
+\*				*/
+
+bright.extend({
+	each: function(obj, callback, args)
+	{	
+		if (!obj)
+			return;
+			
+		var name, i = 0,
+		length = obj.length,
+		isObj = length === undefined || bright.isFunction(obj);
+		
+		if (args)
+		{
+			if (isObj)
+			{		
+				for (name in obj)
+				{				
+					if (callback.apply(obj[name], args) === false)
+					{
+						break;
+					}
+				}		
+			}
+			else
+			{
+				for (var i = 0; i < length; i++)
 				{
-					elem[0].style.left = ((topPoint.Left - 10) + 'px');					
-					if (topPoint.Left <= (properties.left-10))
-					{					
-						var index = bright.inArray(queue,QueueIDLeft);							
-						queue.splice(index, 1);						
-					}				
+					if (callback.apply(obj[i++], args) === false)
+					{
+						break;
+					}
+				}
+			}	
+		}
+		else
+		{
+			if (isObj)
+			{
+				for (name in obj)
+				{			
+					if (callback.call(obj[name], name, obj[name]) === false)
+					{
+						break;
+					}
+				}		
+			}
+			else
+			{
+				for (var i = 0; i < obj.length;)
+				{				
+					if (callback.call(obj[i], i, obj[i++]) === false)
+					{
+						break;
+					}
+				}
+			}
+		}
+		return obj;
+	},
+	isArray: function(src)
+	{
+		return typeof src == "array"? true : false
+	},
+	_mark: function (elem, type) {
+		if (elem) {
+			type = (type || "fx") + "mark";
+			bright._data(elem, type, (bright._data(elem, type, undefined, true) || 0) + 1, true);
+		}
+	},
+	inArray: function(array, value)
+	{
+		var returnValue = -1;
+		for (var i = 0; i < array.length; i++)
+		{
+			if (array[i] == value)
+			{
+				returnValue = i;
+			}
+		}
+		return returnValue;
+	},
+	isFunction: function(obj)
+	{
+		return typeof obj === "function";
+	},
+	isPlainObject: function (obj) {
+		// Must be an Object.
+		// Because of IE, we also have to check the presence of the constructor property.
+		// Make sure that DOM nodes and window objects don't pass through, as well
+		if (!obj || bright.type(obj) !== "object" || obj.nodeType || this.isWindow(obj)) {
+			return false;
+		}
+
+		try {
+			// Not own constructor property must be Object
+			if (obj.constructor && !hasOwn.call(obj, "constructor") && !hasOwn.call(obj.constructor.prototype, "isPrototypeOf")) {
+				return false;
+			}
+		} catch(e) {
+			// IE8,9 Will throw exceptions on certain host objects #9897
+			return false;
+		}
+
+		// Own properties are enumerated firstly, so to speed up,
+		// if last one is own, then all properties are own.
+		var key;
+		for (key in obj) {}
+
+		return key === undefined || hasOwn.call(obj, key);
+	},
+	isWindow: function(obj){	
+		return obj != null && obj == obj.window;
+	},	
+	type: function(obj)
+	{
+		return obj == null ? String(obj) : class2type[toString.call(obj)] || "object";
+	},
+	isEmptyObject: function(obj){
+		for (var name in obj) {
+			return false;
+		}
+		return true;
+	},
+	now: function()
+	{
+		return (new Date()).getTime();
+	},
+	timers: [],
+	camelCase: function (string) {
+		return string.replace(rmsPrefix, "ms-").replace(rdashAlpha, fcamelCase);
+	},
+	grep: function (elems, callback, inv) {
+		var ret = [],
+			retVal;
+		inv = !!inv;
+
+		// Go through the array, only saving the items
+		// that pass the validator function
+		for (var i = 0, length = elems.length; i < length; i++) {
+			retVal = !!callback(elems[i], i);
+			if (inv !== retVal) {
+				ret.push(elems[i]);
+			}
+		}
+
+		return ret;
+	},
+	access: function( elems, fn, key, value, chainable, emptyGet, pass ) {		
+		var exec,
+			bulk = key == null,
+			i = 0,
+			length = elems.length;
+		
+				
+		// Sets many values
+		if ( key && typeof key === "object" ) {
+			for ( i in key ) {
+				bright.access( elems, fn, i, key[i], 1, emptyGet, value );
+			}
+			chainable = 1;
+
+		// Sets one value
+		} else if ( value !== undefined ) {
+			// Optionally, function values get executed if exec is true
+			exec = pass === undefined && bright.isFunction( value );		
+			
+			if ( bulk ) {
+				// Bulk operations only iterate when executing function values
+				if ( exec ) {
+					exec = fn;
+					fn = function( elem, key, value ) {
+						return exec.call( bright( elem ), value );
+					};
+
+				// Otherwise they run against the entire set
+				} else {
+					fn.call( elems, value );
+					fn = null;
 				}
 			}
 			
-			if (properties.top){
-				if (properties.top > topPoint.Top){
-					animatingTop = true;					
-					elem[0].style.top = ((topPoint.Top + 10) + 'px');						
-					if (topPoint.Top >= (properties.top-windowoffset))
-					{					
-						var index = bright.inArray(queue, QueueIDTop);	
-						if (index != -1){
-							queue.splice(index, 1);
+			if ( fn ) {
+				for (; i < length; i++ ) {
+					fn( elems[i], key, exec ? value.call( elems[i], i, fn( elems[i], key ) ) : value, pass );					
+				} 
+			}
+
+			chainable = 1;
+		}
+		
+		return chainable ?
+			elems :
+
+			// Gets
+			bulk ?
+				fn.call( elems ) :
+				length ? fn( elems[0], key ) : emptyGet;
+	},
+	trim: trim ?
+		function( text ) {
+			return text == null ?
+				"" :
+				trim.call( text );
+		} :
+
+		// Otherwise use our own trimming functionality
+		function( text ) {
+			return text == null ?
+				"" :
+				text.toString().replace( trimLeft, "" ).replace( trimRight, "" );
+		},
+
+	// results is for internal usage only
+	makeArray: function( array, results ) {
+		var ret = results || [];
+
+		if ( array != null ) {
+			// The window, strings (and functions) also have 'length'
+			// Tweaked logic slightly to handle Blackberry 4.7 RegExp issues #6930
+			var type = bright.type( array );
+
+			if ( array.length == null || type === "string" || type === "function" || type === "regexp" || bright.isWindow( array ) ) {
+				push.call( ret, array );
+			} else {
+				bright.merge( ret, array );
+			}
+		}
+
+		return ret;
+	},
+	merge: function( first, second ) {
+		var i = first.length,
+			j = 0;
+
+		if ( typeof second.length === "number" ) {
+			for ( var l = second.length; j < l; j++ ) {
+				first[ i++ ] = second[ j ];
+			}
+
+		} else {
+			while ( second[j] !== undefined ) {
+				first[ i++ ] = second[ j++ ];
+			}
+		}
+
+		first.length = i;
+
+		return first;
+	},
+	filter: function( expr, elems, not ) {
+		if ( not ) {
+			expr = ":not(" + expr + ")";
+		}
+
+		return elems.length === 1 ?
+			bright.find.matchesSelector(elems[0], expr) ? [ elems[0] ] : [] :
+			bright.find.matches(expr, elems);
+	},
+	find: {
+		matches: function(elems, expr)
+		{	
+			
+			return false;
+		},
+		matchesSelector: function(expr, elems)
+		{
+			//console.log(expr, elems);
+			return false;
+		}
+	}
+});
+
+
+/* 								*\
+	Core Animation functions
+\*								*/
+
+	
+		//affect base variables 
+		var elemdisplay = {},
+		iframe, iframeDoc,
+		rfxtypes = /^(?:toggle|show|hide)$/,
+		rfxnum = /^([+\-]=)?([\d+.\-]+)([a-z%]*)$/i,
+		timerId,
+		fxNow,
+		fxAttrs = [
+			// height animations
+			[ "height", "marginTop", "marginBottom", "paddingTop", "paddingBottom" ],
+			// width animations
+			[ "width", "marginLeft", "marginRight", "paddingLeft", "paddingRight" ],
+			// opacity animations
+			[ "opacity" ]
+		],
+		class2type = {
+			"[object Boolean]": "boolean",
+			"[object Number]": "number",
+			"[object String]": "string",
+			"[object Function]": "function",
+			"[object Array]": "array",
+			"[object Date]": "date",
+			"[object RegExp]": "regexp",
+			"[object Object]": "object",
+			"[object Error]": "error"
+		};
+	
+		/* 									*\
+				Animation base functions 
+		\*									*/
+		
+		// Generate shortcuts for custom animations
+		/*bright.each({
+			slideDown: genFx( "show", 1 ),
+			slideUp: genFx( "hide", 1 ),
+			slideToggle: genFx( "toggle", 1 ),
+			fadeIn: { opacity: "show" },
+			fadeOut: { opacity: "hide" },
+			fadeToggle: { opacity: "toggle" }
+		}, function( name, props ) {
+			bright.fn[ name ] = function( speed, easing, callback ) {
+				return this.animate( props, speed, easing, callback );
+			};
+		});*/
+			
+		// Animations created synchronously will run synchronously
+		function createFxNow() {
+			setTimeout( clearFxNow, 0 );
+			return ( fxNow = bright.now() );
+		}
+		
+		function clearFxNow() {
+			fxNow = undefined;
+		}
+		
+		// Generate parameters to create a standard animation
+		function genFx( type, num ) {
+			var obj = {};
+		
+			bright.each( fxAttrs.concat.apply([], fxAttrs.slice( 0, num )), function() {
+				obj[ this ] = type;
+			});
+		
+			return obj;
+		}
+	
+		bright.extend({			
+			fx: function( elem, options, prop ) {
+				this.options = options;
+				this.elem = elem;
+				this.prop = prop;
+		
+				options.orig = options.orig || {};		
+				
+			},
+			speed: function( speed, easing, fn ) {		
+				var opt = speed && typeof speed === "object" ? bright.extend( {}, speed ) : {
+					complete: fn || !fn && easing ||
+						bright.isFunction( speed ) && speed,
+					duration: speed,
+					easing: fn && easing || easing && !bright.isFunction( easing ) && easing
+				};
+				
+				opt.duration = bright.fx.off ? 0 : typeof opt.duration === "number" ? opt.duration : opt.duration in bright.fx.speeds ? bright.fx.speeds[ opt.duration ] : bright.fx.speeds._default;
+		
+				
+				// normalize opt.queue - true/undefined/null -> "fx"
+				if ( opt.queue == null || opt.queue === true ) {
+					opt.queue = "fx";
+				}
+		
+				// Queueing
+				opt.old = opt.complete;
+		
+				opt.complete = function( noUnmark ) {
+					if ( bright.isFunction( opt.old ) ) {
+						opt.old.call( this );
+					}
+		
+					if ( opt.queue ) {
+						bright.dequeue( this, opt.queue );
+					} else if ( noUnmark !== false ) {
+						bright._unmark( this );
+					}
+				};
+		
+				return opt;
+			},			
+			easing: {
+				linear: function( p ) {
+					return p;
+				},
+				swing: function( p ) {
+					return ( -Math.cos( p*Math.PI ) / 2 ) + 0.5;
+				}
+			},
+			timers: []				
+		});
+		
+
+		bright.fx.prototype = {
+				// Simple function for setting a style value
+			update: function() {
+				if ( this.options.step ) {
+					this.options.step.call( this.elem, this.now, this );
+				}		
+				( bright.fx.step[ this.prop ] || bright.fx.step._default )( this );
+			},
+
+			// Get the current size
+			cur: function() {
+				if ( this.elem[ this.prop ] != null && (!this.elem.style || this.elem.style[ this.prop ] == null) ) {
+					return this.elem[ this.prop ];
+				}
+
+				var parsed,
+					r = bright.css( this.elem, this.prop );
+				// Empty strings, null, undefined and "auto" are converted to 0,
+				// complex values such as "rotate(1rad)" are returned as is,
+				// simple values such as "10px" are parsed to Float.
+				return isNaN( parsed = parseFloat( r ) ) ? !r || r === "auto" ? 0 : r : parsed;
+				},
+			
+				// Start an animation from one number to another
+				custom: function( from, to, unit ) {
+					var self = this,
+						fx = bright.fx;
+			
+					this.startTime = fxNow || createFxNow();
+					this.end = to;
+					this.now = this.start = from;
+					this.pos = this.state = 0;
+					this.unit = unit || this.unit || ( bright.cssNumber[ this.prop ] ? "" : "px" );
+			
+					function t( gotoEnd ) {
+						return self.step( gotoEnd );
+					}
+			
+					t.queue = this.options.queue;
+					t.elem = this.elem;
+					t.saveState = function() {
+						if ( bright._data( self.elem, "fxshow" + self.prop ) === undefined ) {
+							if ( self.options.hide ) {
+								bright._data( self.elem, "fxshow" + self.prop, self.start );
+							} else if ( self.options.show ) {
+								bright._data( self.elem, "fxshow" + self.prop, self.end );
+							}
+						}
+					};
+			
+					if ( t() && bright.timers.push(t) && !timerId ) {
+						timerId = setInterval( fx.tick, fx.interval );
+					}
+				},
+			
+				// Simple 'show' function
+				show: function() {
+					var dataShow = bright._data( this.elem, "fxshow" + this.prop );
+			
+					// Remember where we started, so that we can go back to it later
+					this.options.orig[ this.prop ] = dataShow || bright.style( this.elem, this.prop );
+					this.options.show = true;
+			
+					// Begin the animation
+					// Make sure that we start at a small width/height to avoid any flash of content
+					if ( dataShow !== undefined ) {
+						// This show is picking up where a previous hide or show left off
+						this.custom( this.cur(), dataShow );
+					} else {
+						this.custom( this.prop === "width" || this.prop === "height" ? 1 : 0, this.cur() );
+					}
+			
+					// Start by showing the element
+					bright( this.elem ).show();
+				},
+			
+				// Simple 'hide' function
+				hide: function() {
+					// Remember where we started, so that we can go back to it later
+					this.options.orig[ this.prop ] = bright._data( this.elem, "fxshow" + this.prop ) || bright.style( this.elem, this.prop );
+					this.options.hide = true;
+			
+					// Begin the animation
+					this.custom( this.cur(), 0 );
+				},
+			
+				// Each step of an animation
+				step: function( gotoEnd ) {
+					var p, n, complete,
+						t = fxNow || createFxNow(),
+						done = true,
+						elem = this.elem,
+						options = this.options;
+			
+					if ( gotoEnd || t >= options.duration + this.startTime ) {
+						this.now = this.end;
+						this.pos = this.state = 1;
+						this.update();
+			
+						options.animatedProperties[ this.prop ] = true;
+			
+						for ( p in options.animatedProperties ) {
+							if ( options.animatedProperties[ p ] !== true ) {
+								done = false;
+							}
+						}
+			
+						if ( done ) {
+							// Reset the overflow
+							if ( options.overflow != null && !bright.support.shrinkWrapBlocks ) {
+			
+								bright.each( [ "", "X", "Y" ], function( index, value ) {
+									elem.style[ "overflow" + value ] = options.overflow[ index ];
+								});
+							}
+			
+							// Hide the element if the "hide" operation was done
+							if ( options.hide ) {
+								bright( elem ).hide();
+							}
+			
+							// Reset the properties, if the item has been hidden or shown
+							if ( options.hide || options.show ) {
+								for ( p in options.animatedProperties ) {
+									bright.style( elem, p, options.orig[ p ] );
+									bright.removeData( elem, "fxshow" + p, true );
+									// Toggle data is no longer needed
+									bright.removeData( elem, "toggle" + p, true );
+								}
+							}
+			
+							// Execute the complete function
+							// in the event that the complete function throws an exception
+							// we must ensure it won't be called twice. #5684
+			
+							complete = options.complete;
+							if ( complete ) {
+			
+								options.complete = false;
+								complete.call( elem );
+							}
+						}
+			
+						return false;
+			
+					} else {
+						// classical easing cannot be used with an Infinity duration
+						if ( options.duration == Infinity ) {
+							this.now = t;
+						} else {
+							n = t - this.startTime;
+							this.state = n / options.duration;
+			
+							// Perform the easing function, defaults to swing
+							this.pos = bright.easing[ options.animatedProperties[this.prop] ]( this.state, n, 0, 1, options.duration );
+							this.now = this.start + ( (this.end - this.start) * this.pos );
+						}
+						// Perform the next step of the animation
+						this.update();
+					}
+			
+					return true;
+				}				
+			}
+				
+		bright.extend( bright.fx, {
+			tick: function() {
+				var timer,
+					timers = bright.timers,
+					i = 0;
+		
+				for ( ; i < timers.length; i++ ) {
+					timer = timers[ i ];
+					// Checks the timer has not already been removed
+					if ( !timer() && timers[ i ] === timer ) {
+						timers.splice( i--, 1 );
+					}
+				}
+		
+				if ( !timers.length ) {
+					bright.fx.stop();
+				}
+			},
+		
+			interval: 13,
+		
+			stop: function() {
+				clearInterval( timerId );
+				timerId = null;
+			},
+		
+			speeds: {
+				slow: 600,
+				fast: 200,
+				// Default speed
+				_default: 400
+			},
+		
+			step: {
+				opacity: function( fx ) {
+					bright.style( fx.elem, "opacity", fx.now );
+				},
+		
+				_default: function( fx ) {
+					if ( fx.elem.style && fx.elem.style[ fx.prop ] != null ) {
+						fx.elem.style[ fx.prop ] = fx.now + fx.unit;
+					} else {
+						fx.elem[ fx.prop ] = fx.now;
+					}
+				}
+			}
+		});
+		
+		
+		/* 							*\
+				Queueing base
+		\*							*/
+		
+		bright.extend({
+			_mark: function( elem, type ) {
+				if ( elem ) {
+					type = ( type || "fx" ) + "mark";
+					bright._data( elem, type, (bright._data( elem, type ) || 0) + 1 );
+				}
+			},
+
+			_unmark: function( force, elem, type ) {
+				if ( force !== true ) {
+					type = elem;
+					elem = force;
+					force = false;
+				}
+				if ( elem ) {
+					type = type || "fx";
+					var key = type + "mark",
+						count = force ? 0 : ( (bright._data( elem, key ) || 1) - 1 );
+					if ( count ) {
+						bright._data( elem, key, count );
+					} else {
+						bright.removeData( elem, key, true );
+						handleQueueMarkDefer( elem, type, "mark" );
+					}
+				}
+			},
+			queue: function( elem, type, data ) 
+			{
+				var q;	
+				if ( elem ) {
+					type = ( type || "fx" ) + "queue";
+					q = bright._data( elem, type );			
+					// Speed up dequeue by getting out quickly if this is just a lookup
+					if ( data ) {			
+						if ( !q || bright.isArray(data) ) {					
+							q = bright._data( elem, type, bright.makeArray(data) );				
+						} else {
+							q.push( data );					
+						}
+					}					
+					return q || [];		
+				}				
+			},
+			dequeue: function( elem, type ) 
+			{			
+				type = type || "fx";
+
+				var queue = bright.queue( elem, type ),
+					fn = queue.shift(),
+					hooks = {};
+
+				// If the fx queue is dequeued, always remove the progress sentinel
+				if ( fn === "inprogress" ) {
+					fn = queue.shift();
+				}
+
+				if ( fn ) {
+					// Add a progress sentinel to prevent the fx queue from being
+					// automatically dequeued
+					if ( type === "fx" ) {
+						queue.unshift( "inprogress" );
+					}
+
+					bright._data( elem, type + ".run", hooks );
+					fn.call( elem, function() {
+						bright.dequeue( elem, type );
+					}, hooks );
+				}
+
+				if ( !queue.length ) {
+					bright.removeData( elem, type + "queue " + type + ".run", true );
+					handleQueueMarkDefer( elem, type, "queue" );
+				}
+			}					
+		});
+		
+		
+		
+		bright.fn.extend({
+			queue: function(type, data)
+			{
+				var setter = 2;
+				if (typeof type !== 'string')
+				{
+					data = type;
+					type = 'fx';
+					setter--;					
+				}
+				
+				if ( arguments.length < setter ) {
+					return bright.queue(this[0], type );
+				}	
+				
+				return data === undefined ?
+				this : this.each(function() {				
+					var queue = bright.queue( this, type, data );				
+					if ( type === "fx" && queue[0] !== "inprogress" ) {
+						bright.dequeue( this, type );
+					}
+				});	
+			},
+			dequeue: function( type ) {
+				return this.each(function() {
+					bright.dequeue( this, type );
+				});
+			}
+		});
+		
+		
+		
+		/* data */
+		
+		
+		bright.extend({
+			cache: {},
+			uuid: 0,
+			expando: ("bright" + ( bright.fn.bright + Math.random() )).replace( /\D/g, "" ),
+			noop: {},
+			//internal purposes
+			_data: function(elem, name, data)
+			{
+				return this.data( elem, name, data, true );
+			},
+			data: function(elem, name, data, pvt)
+			{
+				if (!bright.acceptData(elem))
+				{
+					//doesn't accept data...
+					return;
+				}	
+				var getByName = typeof name === 'string',
+				internalKey = this.expando,
+				ret,
+				thisCache,
+				privateCache,				
+				isNode = elem.nodeType,
+				cache = isNode ? this.cache : elem,
+				id = isNode ? elem[ internalKey ] : elem[ internalKey ] && internalKey,
+				isEvents = name === 'events';		
+				
+				if ( (!id || !cache[id] || (!isEvents && !pvt && !cache[id].data)) && getByName && data === undefined ) {
+					return;
+				}
+				
+				
+				if ( !id ) {			
+					if ( isNode ) {
+						elem[ internalKey ] = id = ++this.uuid;
+					} else {
+						id = internalKey;
+					}
+				}
+				
+				if ( !cache[ id ] ) {
+					cache[ id ] = {};				
+					if ( !isNode ) {
+						cache[ id ].toJSON = this.noop;
+					}
+				}
+				
+				
+				privateCache = thisCache = cache[ id ];
+				
+				if ( !pvt ) {
+					if ( !thisCache.data ) {
+						thisCache.data = {};
+					}
+		
+					thisCache = thisCache.data;
+				}
+				
+				
+				if ( data !== undefined ) {
+					thisCache[ bright.camelCase( name ) ] = data;
+				}
+				
+				if ( isEvents && !thisCache[ name ] ) {
+					return privateCache.events;
+				}
+		
+				// Check for both converted-to-camel and non-converted data property names
+				// If a data property was specified
+				if ( getByName ) {
+		
+					// First Try to find as-is property data
+					ret = thisCache[ name ];
+		
+					// Test for null|undefined property data
+					if ( ret == null ) {
+		
+						// Try to find the camelCased property
+						ret = thisCache[ bright.camelCase( name ) ];
+					}
+				} else {
+					ret = thisCache;
+				}
+				
+				//console.log(ret);
+				return ret;
+			},
+			acceptData: function(elem)
+			{			
+				//does the element habe anyData...	
+				if ( elem.nodeName ) {
+					var match = bright.noData[ elem.nodeName.toLowerCase() ];
+		
+					if ( match ) {
+						return !(match === true || elem.getAttribute("classid") !== match);
+					}
+				}		
+				return true;
+			},
+			noData: {
+				"embed": true,
+				// Ban all objects except for Flash (which handle expandos)
+				"object": "clsid:D27CDB6E-AE6D-11cf-96B8-444553540000",
+				"applet": true
+			},
+			removeData: function( elem, name, pvt) {
+				if ( !bright.acceptData( elem ) ) {
+					return;
+				}
+
+				var thisCache, i, l,
+
+					// Reference to internal data cache key
+					internalKey = bright.expando,
+
+					isNode = elem.nodeType,
+
+					// See bright.data for more information
+					cache = isNode ? bright.cache : elem,
+
+					// See bright.data for more information
+					id = isNode ? elem[ internalKey ] : internalKey;
+
+				// If there is already no cache entry for this object, there is no
+				// purpose in continuing
+				if ( !cache[ id ] ) {
+					return;
+				}
+
+				if ( name ) {
+
+					thisCache = pvt ? cache[ id ] : cache[ id ].data;
+
+					if ( thisCache ) {
+
+						// Support array or space separated string names for data keys
+						if ( !bright.isArray( name ) ) {
+
+							// try the string as a key before any manipulation
+							if ( name in thisCache ) {
+								name = [ name ];
+							} else {
+
+								// split the camel cased version by spaces unless a key with the spaces exists
+								name = bright.camelCase( name );
+								if ( name in thisCache ) {
+									name = [ name ];
+								} else {
+									name = name.split( " " );
+								}
+							}
+						}
+
+						for ( i = 0, l = name.length; i < l; i++ ) {
+							delete thisCache[ name[i] ];
+						}
+
+						// If there is no data left in the cache, we want to continue
+						// and let the cache object itself get destroyed
+						if ( !( pvt ? isEmptyDataObject : bright.isEmptyObject )( thisCache ) ) {
+							return;
 						}
 					}
-					else
-					{
-						elem[0].style.top = ((topPoint.Top + 10) + 'px');	
+				}
+
+				// See bright.data for more information
+				if ( !pvt ) {
+					delete cache[ id ].data;
+
+					// Don't destroy the parent cache unless the internal data object
+					// had been the only thing left in it
+					if ( !isEmptyDataObject(cache[ id ]) ) {
+						return;
 					}
 				}
-				else if (!animatingTop)
-				{
-					elem[0].style.top = ((topPoint.Top - windowoffset) + 'px');				
-					if (topPoint.Top <= (properties.top-windowoffset))
-					{
-						var index = bright.inArray(queue,QueueIDTop);							
-						queue.splice(index, 1);											
-					}				
+
+				// Browsers that fail expando deletion also refuse to delete expandos on
+				// the window, but it will allow it on all other JS objects; other browsers
+				// don't care
+				// Ensure that `cache` is not a window object #10080
+				if ( bright.support.deleteExpando || !cache.setInterval ) {
+					delete cache[ id ];
+				} else {
+					cache[ id ] = null;
 				}
-			}				
-				
-			if (queue.length < 1)
-			{
-				clearInterval(animationTimer);		
-			}			
-		}, speed);
+
+				// We destroyed the cache and need to eliminate the expando on the node to avoid
+				// false lookups in the cache for entries that no longer exist
+				if ( isNode ) {
+					// IE does not allow us to delete expando properties from nodes,
+					// nor does it have a removeAttribute function on Document nodes;
+					// we must handle all of these cases
+					if ( bright.support.deleteExpando ) {
+						delete elem[ internalKey ];
+					} else if ( elem.removeAttribute ) {
+						elem.removeAttribute( internalKey );
+					} else {
+						elem[ internalKey ] = null;
+					}
+				}
+			},
+		});
+		
+		
+		
+// Ensure props that can't be negative don't go there on undershoot easing
+bright.each( fxAttrs.concat.apply( [], fxAttrs ), function( i, prop ) {
+	// exclude marginTop, marginLeft, marginBottom and marginRight from this list
+	if ( prop.indexOf( "margin" ) ) {		
+		bright.fx.step[ prop ] = function( fx ) {
+			bright.style( fx.elem, prop, Math.max(0, fx.now) + fx.unit );
+		};
 	}
-	return this;
+});
+
+if ( bright.expr && bright.expr.filters ) {
+	bright.expr.filters.animated = function( elem ) {
+		return bright.grep(bright.timers, function( fn ) {
+			return elem === fn.elem;
+		}).length;
+	};
 }
+
+function handleQueueMarkDefer( elem, type, src ) {
+	var deferDataKey = type + "defer",
+		queueDataKey = type + "queue",
+		markDataKey = type + "mark",
+		defer = bright._data( elem, deferDataKey );		
+	if ( defer &&
+		( src === "queue" || !bright._data(elem, queueDataKey) ) &&
+		( src === "mark" || !bright._data(elem, markDataKey) ) ) {
+		// Give room for hard-coded callbacks to fire first
+		// and eventually mark/queue something else on the element
+		setTimeout( function() {
+			if ( !bright._data( elem, queueDataKey ) &&
+				!bright._data( elem, markDataKey ) ) {
+				bright.removeData( elem, deferDataKey, true );
+				defer.fire();
+			}
+		}, 0 );
+	}
+}
+
+
+function dataAttr( elem, key, data ) {
+	// If nothing was found internally, try to fetch any
+	// data from the HTML5 data-* attribute
+	if ( data === undefined && elem.nodeType === 1 ) {
+
+		var name = "data-" + key.replace( rmultiDash, "-$1" ).toLowerCase();
+
+		data = elem.getAttribute( name );
+
+		if ( typeof data === "string" ) {
+			try {
+				data = data === "true" ? true :
+				data === "false" ? false :
+				data === "null" ? null :
+				bright.isNumeric( data ) ? +data :
+					rbrace.test( data ) ? bright.parseJSON( data ) :
+					data;
+			} catch( e ) {}
+
+			// Make sure we set the data so it isn't changed later
+			bright.data( elem, key, data );
+
+		} else {
+			data = undefined;
+		}
+	}
+
+	return data;
+}
+
+// checks a cache object for emptiness
+function isEmptyDataObject( obj ) {
+	for ( var name in obj ) {
+
+		// if the public data object is empty, the private is still empty
+		if ( name === "data" && bright.isEmptyObject( obj[name] ) ) {
+			continue;
+		}
+		if ( name !== "toJSON" ) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+
+bright.fn.pushStack = function (elems, name, selector) {
+    // Build a new bright matched element set
+    var ret = this.constructor();
+
+    if (bright.isArray(elems)) {
+        push.apply(ret, elems);
+
+    } else {
+        bright.merge(ret, elems);
+    }
+
+    // Add the old object onto the stack (as a reference)
+    ret.prevObject = this;
+
+    ret.context = this.context;
+
+    if (name === "find") {
+        ret.selector = this.selector + (this.selector ? " " : "") + selector;
+    } else if (name) {
+        ret.selector = this.selector + "." + name + "(" + selector + ")";
+    }
+
+    // Return the newly-formed element set
+    return ret;
+}
+
+function winnow(elements, qualifier, keep) {
+
+    // Can't pass null or undefined to indexOf in Firefox 4
+    // Set to 0 to skip string check
+    qualifier = qualifier || 0;
+
+    if (bright.isFunction(qualifier)) {
+        return bright.grep(elements, function (elem, i) {
+            var retVal = !!qualifier.call(elem, i, elem);
+            return retVal === keep;
+        });
+
+    } else if (qualifier.nodeType) {
+        return bright.grep(elements, function (elem, i) {
+            return (elem === qualifier) === keep;
+        });
+
+    } else if (typeof qualifier === "string") {
+        var filtered = bright.grep(elements, function (elem) {
+            return elem.nodeType === 1;
+        });
+
+        if (isSimple.test(qualifier)) {
+            return bright.filter(qualifier, filtered, !keep);
+        } else {
+            qualifier = bright.filter(qualifier, filtered);
+        }
+    }
+
+    return bright.grep(elements, function (elem, i) {
+        return (bright.inArray(elem, qualifier) >= 0) === keep;
+    });
+}
+
+
+/* 					*\
+	   Support
+\*					*/
+
+bright.support = (function(){
+		var div = document.createElement( "div" );
+		div.innerHTML = "   <link/><table></table><a href='/a' style='top:1px;float:left;opacity:.55;'>a</a><input type='checkbox'/>";	
+		a = div.getElementsByTagName( "a" )[ 0 ];
+		
+		support = {
+			cssFloat: !!a.style.cssFloat,
+			deleteExpando: true
+		}
+	return support;
+	
+})();
+
+/*   					*\
+		Bright.css
+\*						*/
+
+
+var ralpha = /alpha\([^)]*\)/i,
+	ropacity = /opacity=([^)]*)/,
+	// fixed for IE9, see #8346
+	rupper = /([A-Z]|^ms)/g,
+	rnum = /^[\-+]?(?:\d*\.)?\d+$/i,
+	rnumnonpx = /^-?(?:\d*\.)?\d+(?!px)[^\d\s]+$/i,
+	rrelNum = /^([\-+])=([\-+.\de]+)/,
+	rmargin = /^margin/,
+
+	cssShow = { position: "absolute", visibility: "hidden", display: "block" },
+
+	// order is important!
+	cssExpand = [ "Top", "Right", "Bottom", "Left" ],
+
+	curCSS,
+
+	getComputedStyle,
+	currentStyle;
+
+bright.fn.css = function( name, value ) {			
+	return bright.access( this, function( elem, name, value ) {		
+		return value !== undefined ? bright.style( elem, name, value ) : bright.css( elem, name );
+	}, name, value, arguments.length > 1 );
+};
+
+
+bright.extend({
+	// Add in style property hooks for overriding the default
+	// behavior of getting and setting a style property
+	cssHooks: {
+		opacity: {
+			get: function( elem, computed ) {
+				if ( computed ) {
+					// We should always get a number back from opacity
+					var ret = curCSS( elem, "opacity" );
+					return ret === "" ? "1" : ret;
+
+				} else {
+					return elem.style.opacity;
+				}
+			}
+		}
+	},
+
+	// Exclude the following css properties to add px
+	cssNumber: {
+		"fillOpacity": true,
+		"fontWeight": true,
+		"lineHeight": true,
+		"opacity": true,
+		"orphans": true,
+		"widows": true,
+		"zIndex": true,
+		"zoom": true
+	},
+
+	// Add in properties whose names you wish to fix before
+	// setting or getting the value
+	cssProps: {
+		// normalize float css property
+		"float": bright.support.cssFloat ? "cssFloat" : "styleFloat"
+	},
+
+	// Get and set the style property on a DOM Node
+	style: function( elem, name, value, extra ) {
+		elem = elem[0];
+		// Don't set styles on text and comment nodes
+		if ( !elem || elem.nodeType === 3 || elem.nodeType === 8 || !elem.style ) {			
+			return;
+		}
+		
+		// Make sure that we're working with the right name
+		var ret, type, origName = bright.camelCase( name ),
+			style = elem.style, hooks = bright.cssHooks[ origName ];
+
+		name = bright.cssProps[ origName ] || origName;
+
+		// Check if we're setting a value
+		if ( value !== undefined ) {
+			type = typeof value;
+
+			// convert relative number strings (+= or -=) to relative numbers. #7345
+			if ( type === "string" && (ret = rrelNum.exec( value )) ) {
+				value = ( +( ret[1] + 1) * +ret[2] ) + parseFloat( bright.css( elem, name ) );
+				// Fixes bug #9237
+				type = "number";
+			}
+
+			// Make sure that NaN and null values aren't set. See: #7116
+			if ( value == null || type === "number" && isNaN( value ) ) {
+				return;
+			}
+
+			// If a number was passed in, add 'px' to the (except for certain CSS properties)
+			if ( type === "number" && !bright.cssNumber[ origName ] ) {
+				value += "px";
+			}
+
+			// If a hook was provided, use that value, otherwise just set the specified value
+			if ( !hooks || !("set" in hooks) || (value = hooks.set( elem, value )) !== undefined ) {
+				// Wrapped to prevent IE from throwing errors when 'invalid' values are provided
+				// Fixes bug #5509
+				try {
+					style[ name ] = value;
+				} catch(e) {}
+			}
+
+		} else {
+			// If a hook was provided get the non-computed value from there
+			if ( hooks && "get" in hooks && (ret = hooks.get( elem, false, extra )) !== undefined ) {
+				return ret;
+			}
+
+			// Otherwise just get the value from the style object
+			return style[ name ];
+		}
+	},
+
+	css: function( elem, name, extra ) {
+		var ret, hooks;
+
+		// Make sure that we're working with the right name
+		name = bright.camelCase( name );
+		hooks = bright.cssHooks[ name ];
+		name = bright.cssProps[ name ] || name;
+
+		// cssFloat needs a special treatment
+		if ( name === "cssFloat" ) {
+			name = "float";
+		}
+
+		// If a hook was provided get the computed value from there
+		if ( hooks && "get" in hooks && (ret = hooks.get( elem, true, extra )) !== undefined ) {
+			return ret;
+
+		// Otherwise, if a way to get the computed value exists, use that
+		} else if ( curCSS ) {
+			return curCSS( elem, name );
+		}
+	},
+
+	// A method for quickly swapping in/out CSS properties to get correct calculations
+	swap: function( elem, options, callback ) {
+		var old = {},
+			ret, name;
+
+		// Remember the old values, and insert the new ones
+		for ( name in options ) {
+			old[ name ] = elem.style[ name ];
+			elem.style[ name ] = options[ name ];
+		}
+
+		ret = callback.call( elem );
+
+		// Revert the old values
+		for ( name in options ) {
+			elem.style[ name ] = old[ name ];
+		}
+
+		return ret;
+	}
+});
+
+
+/*   					*\
+		Bright.ajax
+\*						*/
 
 
 bright.ajax = function(options, parms)
@@ -1544,4 +2685,6 @@ bright.ajax = function(options, parms)
 	}	
 }
 
+//expose the bright Library to the DOM
+window.bright = window.$ = bright;
 })( window )
