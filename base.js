@@ -54,9 +54,27 @@
 				this[0] = elementArray;
 				return this;
 			}		
+		
+			//first off we, will test the selector varible to see if its empty
+			if (selector)
+			{
+				if (typeof selector === 'string'){
+					//hmmm so lets see 
+				
+
+				}
+			}
+			else
+			{
+				this.length = 0;
+				this.context = window;
+				this.selector = "";
+				return this;
+			}
 			
 			
-					
+			//old model... but im re-doing...
+			
 			if (typeof selector === "object")
 			{
 		    	if (selector.length > 0)
@@ -781,27 +799,20 @@
 		  {
 		  	var border = false,
 		  	color = "";
-		  	if ((typeof borders == "boolean")&&(borders == true))
+		  	if ((typeof borders == "boolean") && borders)
 		  	{
 			  	//wants a border and stuff...
 			  	border = true;
 			  	color = options.color;
 		  	}
 			//this will  validate any form that gets inserted into it... it will be able to check if the user has put some values in... Simple Validate
-			if (this[0].length > 0)
-				{
-					var ele = this[0];
-						for (var i = 0; i < ele.length; i++){
-							bright(ele[i]).validate(options, fun);
-						}
-
-				}
-				else
+			bright.each(this[0], function(i, elem)
 				{
 					
 					var follow = true;
 					var inputsElements = Array();
-					var inputs = this[0].getElementsByTagName('input');
+					
+					var inputs = elem.getElementsByTagName('input');
 					
 					for (var i = 0; i < inputs.length; i++){
 						var type = inputs[i].type.toUpperCase();					
@@ -854,7 +865,7 @@
 							});
 						}
 					}
-				}
+				});
 				return this;
 			},
 			html: function(text)
@@ -1229,8 +1240,11 @@
 				
 			},
 			append: function(html)
-			{				
-				return this[0].appendChild(html);				
+			{	
+				bright.each(this[0], function(i, elem)
+				{							
+					return elem.appendChild(html);	
+				});			
 			},
 			findChild: function(elemName)
 			{			
