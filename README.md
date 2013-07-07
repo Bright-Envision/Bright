@@ -20,9 +20,7 @@ I'll be putting up a website for it later, this month... (a bit busy)
 
 
 The Selectors are very simular to jQuerys ones... so for example
-<pre><code>
-  bright("#id").toggle();
-</code></pre>
+<pre><code>bright("#id").toggle();</code></pre>
 
 
 This is how we select and work with some of the functions...
