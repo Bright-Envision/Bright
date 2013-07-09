@@ -1,7 +1,7 @@
 Bright JavaScript Library.
 ======
 
-This is my brand new library that I chose to name it "Bright".
+This is my brand new library that I named "Bright".
 
 This is a Library that is very simular to jQuery and has tonnes of functions that are in jQuery. This will eventualy turn in
 to the Bright framework, but at the moment, its just the Bright Library. 
