@@ -5,8 +5,8 @@
 
 (function( window, undefined ) {
 	var version = 1.2,
-	isready = false,
-	queue = [],
+	isReady = false,
+	queue = [],	
 	document = window.document,
 	navigator = window.navigator,
 	location = window.location,
@@ -16,12 +16,17 @@
 	rmsPrefix = /^-ms-/,
 	isSimple = /^.[^:#\[\.,]*$/,
 	// Save a reference to some core methods
+	
 	toString = Object.prototype.toString,
 	hasOwn = Object.prototype.hasOwnProperty,
 	push = Array.prototype.push,
 	slice = Array.prototype.slice,
 	trim = String.prototype.trim,
 	indexOf = Array.prototype.indexOf,	
+	w3c = !!document.addEventListener,
+	fns = [],
+	toplevel = false;
+	
 	// Used by bright.camelCase as callback to replace()
 	fcamelCase = function( all, letter ) {
 		return ( letter + "" ).toUpperCase();
@@ -31,6 +36,9 @@
 		return new bright.fn.init(selector, context);		
 	};
 
+	
+	//intial ready function
+	
 	
 	bright.fn = bright.prototype = {
 		init:function(selector, context)
@@ -44,24 +52,228 @@
 			 if (!selector) {
 				return this;
 			}	
-					
-			this.selector = selector;
-			this.context = document;
-			this.length = 1;
+				
+
+			
+	
 			var elementArray = Array(); //houses the multiple elements		
 			if (selector === "body" && !context && document.body) {		
 				elementArray.push(document.body);
 				this[0] = elementArray;
 				return this;
 			}		
-		
+			
 			//first off we, will test the selector varible to see if its empty
 			if (selector)
 			{
+				//lets see if its a string...
 				if (typeof selector === 'string'){
-					//hmmm so lets see 
-				
-
+					if (selector.indexOf(',') !== -1)
+					{
+						//well, it has a comma in the string, so split it on the commas
+						var commaSplit = selector.split(',');							
+						var returnArray = [];
+						for (var i = 0; i < commaSplit.length; i++)
+						{
+							var NewSelector = commaSplit[i].replace(" ",'');
+							returnArray.push(bright(NewSelector)[0]);												
+						}	
+						//since returnArray will have multi-dimensional arrays we need to sort that out....
+						for (var i = 0; i < returnArray.length; i++)
+						{
+							if (returnArray[i].length)
+							{
+								//well array..
+								for (var inner = 0; inner < returnArray[i].length; inner++)
+								{
+									elementArray.push(returnArray[i][inner]);
+								}
+							}
+							else
+							{
+								break;
+							}
+						}
+						if (!elementArray.length)
+							elementArray = returnArray;
+						
+						
+						 this[0] = elementArray;
+						 this.context = document;
+						 this.selector = selector;
+						 this.length = elementArray.length;
+						 return this;					
+					}
+					else if (selector.indexOf(' ') !== -1)
+					{						
+							//it has spaces...
+							var spaceSplit = selector.split(/[ :]+?/g);							
+							
+							
+							if (spaceSplit[0].charAt(0) == '#')
+							{
+								var IDselector = spaceSplit[0].replace("#", ''),
+								element = document.getElementById(IDselector);								
+								if (spaceSplit[1].length > 0){
+									if (spaceSplit[1].indexOf('.') != -1){
+										var allElements = element.getElementsByTagName('*');
+										for (var i = 0; i < allElements.length; i++)
+										{
+											if (allElements[i].ClassName)
+											{												
+												if (allElements[i].ClassName == selector.substr(1, selector.length))
+												{
+													
+													elementArray.push(allElements[i]);
+												}
+											
+											}											
+										}
+									}
+									else
+									{
+										
+										var allElements = element.getElementsByTagName('*');
+										for (var i = 0; i < allElements.length; i++)
+										{
+											if (allElements[i].tagName)
+											{												
+												if (allElements[i].tagName == spaceSplit[1].toUpperCase())
+												{												
+													elementArray.push(allElements[i]);
+												}												
+											}											
+										}
+									}
+							  }		
+							  if (spaceSplit[2])
+							  {
+									//hmmm... well it has a :nth-Child value
+									spaceSplit[2] = spaceSplit[2].replace('nth-child(', '');
+									spaceSplit[2] = spaceSplit[2].replace(')', '');									
+									var number = parseInt(spaceSplit[2]);
+									elementArray = [elementArray[number]];								
+							  }
+							 
+							  this[0] = elementArray;
+							  this.context = document;
+							  this.selector = selector;
+							  this.length = elementArray.length;
+							  return this;
+						  }
+						  else
+						  {
+								//hmmm className... hmm this would be like bright(".elem li")
+								var baseSelector = Array();
+								var allElements = document.getElementsByTagName('*');
+								for (var i = 0; i < allElements.length; i++)
+								{
+									if (allElements[i].className)
+									{										
+										if (allElements[i].className == spaceSplit[0].substr(1, selector.length))
+										{
+											baseSelector.push(allElements[i]);
+										}
+									
+									}											
+								}
+								
+								if (spaceSplit[1])
+								{
+									for (var i = 0; i < baseSelector.length; i++){
+										var elements = baseSelector[i].getElementsByTagName(spaceSplit[1]);
+										for (var s = 0; s < elements.length; s++)
+										{
+											elementArray.push(elements[s]);
+										}
+									}
+								}
+							
+							  this[0] = elementArray;
+							  this.context = document;
+							  this.selector = selector;
+							  this.length = elementArray.length;
+							  return this;
+						  
+						  }
+						
+					  }					
+				      else if (selector.charAt(0) == '#')
+					  {						
+						//well its an id...
+						var IDselector = selector.replace("#", '');
+						var element = document.getElementById(IDselector);													
+						elementArray.push(element);
+						this[0] = elementArray;
+						this.length = elementArray.length;
+						this.context = document;
+						this.selector = selector;
+						return this;
+					  }
+					else if (selector.charAt(0) == '.')
+					{
+						//class so bright(".test")
+						var allElements = document.getElementsByTagName('*');
+						for (var i = 0; i < allElements.length; i++)
+						{
+							if (allElements[i].className)
+							{
+								if (allElements[i].className == selector.substr(1, selector.length))
+								{
+									elementArray.push(allElements[i]);
+								}
+							
+							}											
+						}							 
+					  this[0] = elementArray;
+					  this.context = document;
+					  this.selector = selector;
+					  this.length = elementArray.length;
+					  return this;
+					}
+				}				
+				else if (typeof selector == 'object')
+				{
+					//must be an object
+					if (selector.length > 0)
+					{
+						//hmm well this has some stuff in it...
+						if ((selector.nodeType == 1) && (typeof selector.style == "object") && (typeof selector.ownerDocument == "object"))
+						{
+							//hmm now this is just an element
+							alert('element');
+						}
+						else
+						{
+							if (selector.selector)
+							{
+								//this is a previous selector... lets just get the data from it...
+								this[0] = selector[0];
+								this.length = selector[0].length;
+								this.selector = selector[0];
+								this.context = document.body;
+								return this;
+							}
+							else
+							{
+								//must just be a object array...
+								this[0] = selector;
+								this.length = selector.length;
+								this.selector = selector;
+								this.context = document.body;
+								return this;
+							}
+						}
+					}
+					else
+					{
+						elementArray.push(selector);
+						  this[0] = elementArray;
+						  this.context = document;
+						  this.selector = selector;
+						  this.length = elementArray.length;
+						  return this;						
+					}				
 				}
 			}
 			else
@@ -70,292 +282,20 @@
 				this.context = window;
 				this.selector = "";
 				return this;
-			}
-			
-			
-			//old model... but im re-doing...
-			
-			if (typeof selector === "object")
-			{
-		    	if (selector.length > 0)
-				{
-					if (typeof selector == 'object'){						
-						this[0] = selector;
-						return this;
-					}
-					else if ((typeof selector==="object") &&(selector.nodeType===1) && (typeof selector.style === "object") && (typeof selector.ownerDocument ==="object"))
-					{
-						alert('test');
-					}
-					else
-					{
-						alert('test1');
-					}
-				}
-				else
-				{				
-					if (selector[0])
-					{
-						this[0] = selector[0];
-						return this;
-					}
-					else
-					{
-						elementArray.push(selector);
-						this[0] = elementArray;
-						return this;
-					}
-				}
-			}
-			else if (selector.indexOf(" ") !== -1 && typeof selector === 'string')
-			{
-				//spaces in the code... for example bright(".class span").click...				
-				var split = selector.split(/[ :]+?/g);					
-				if (split[0].charAt(0) === "#")
-				{
-					var ele = document.getElementById(split[0].slice(1));
-					//so it has the first element... now we have to check the second split...
-					
-					if (split[1].charAt(0) == ".")
-					{						
-						var fullele = el.getElementsByTagName('*');
-						for (var i = 0;i < ele.length; i++)
-						{							
-							if (ele[i].className == (split[1].slice(1)))
-							{													
-								elementArray.push(ele[i]);
-							}
-						}
-					  if (elementArray)
-					  {	
-						if (split[2])
-						{
-							var peices = split[2].split(/\(/g);
-							if (peices[0] == "nth-child")
-							{
-								var num = peices[1].replace(')', '');	
-								elementArray = [elementArray[parseInt(num)]];
-								this[0] = elementArray;
-								return this; 
-								
-							}
-						}
-						if (elementArray.length < 1){							
-							this[0] = elementArray;
-							return this;
-						}
-						this[0] = elementArray;
-						return this;
-					  }
-					  else
-					  {
-						 return this;
-					  }
-					}
-					else
-					{
-						//could be a id or a tag so we will check if its a id first...
-						if (split[1].charAt(0) == "#")
-						{
-							var ele = el.getElementById(split[1].slice(1));
-							this[0] = ele;
-							return this;
-						}
-						else
-						{
-							//must be a tag...							
-							var ele = ele.getElementsByTagName(split[1]);
-							 //this will return a node list so we will sort out the node list into an array before we return it.
-							 for (var i = 0; i < ele.length; i++)
-							 {
-								 elementArray.push(ele[i]);
-							 }							
-							 if (elementArray)
-							 {								
-								if (split[2])
-								{
-									var peices = split[2].split(/\(/g);
-									if (peices[0] == "nth-child")
-									{
-										var num = peices[1].replace(')', '');	
-										elementArray = [elementArray[parseInt(num)]];
-										this[0] = elementArray;
-										return this; 
-										
-									}
-								}
-							 	this[0] = elementArray;
-								return this;
-							 }
-							 else
-							 {								
-								 return this;
-							 }
-							
-						}
-					}
-				}
-				
-				if (split[0].charAt(0) === ".")
-				{
-					var el;
-					var ele = document.body.getElementsByTagName('*');					
-					for (var i = 0;i < ele.length; i++)
-					{	
-						if (ele[i].className.indexOf(" "))
-						{
-							//the classname has two classes in it so split!
-							var cl = ele[i].className.split(" ");																
-							if (cl == split[0].slice(1))
-							{											
-								el = ele[i]; //should be the first selector									
-							}
-						}
-						else
-						{
-							if (ele[i].className == (split[0].slice(1)))
-							{									
-								el = ele[i]; //should be the first selector									
-							}
-						}
-					}
-					
-					//now checks the second split...
-					
-					if (split[1].charAt(0) == ".")
-					{	
-						if (!el) return;
-						var fullele = el.getElementsByTagName('*');
-						for (var i = 0;i < ele.length; i++)
-						{							
-							if (ele[i].className == (split[1].slice(1)))
-							{													
-								elementArray.push(ele[i]);
-							}
-						}
-					  if (elementArray)
-						 {
-						 	
-							 this[0] = elementArray;
-							return this;
-						 }
-						 else
-						 {
-							 return this;
-						 }
-					}
-					else
-					{
-						//could be a id or a tag so we will check if its a id first...
-						if (split[1].charAt(0) == "#")
-						{
-							var ele = el.getElementById(split[1].slice(1));
-							return ele;
-						}
-						else
-						{
-							//must be a tag...							
-							var ele = el.getElementsByTagName(split[1]);
-							 //this will return a node list so we will sort out the node list into an array before we return it.
-							 for (var i = 0; i < ele.length; i++)
-							 {
-								 elementArray.push(ele[i]);
-							 }							
-							 if (elementArray)
-							 {
-								if (split[2])
-								{
-									var peices = split[2].split(/\(/g);
-									if (peices[0] == "nth-child")
-									{
-										var num = peices[1].replace(')', '');										
-										this[0] = elementArray[parseInt(num)];
-										return this; 
-										
-									}
-								}
-							 	this[0] = elementArray;
-								return this;
-							 }
-							 else
-							 {
-								 return this;
-							 }
-							
-						}
-					}
-				}
-				
-			}
-			else if (selector.charAt(0) === "#")
-			{
-				//get ids
-				var ele = document.getElementById(selector.slice(1));
-				elementArray.push(ele);
-				this[0] = elementArray;
-				return this;
-			}
-			else if (selector.charAt(0) === ".")
-			{
-				//class...
-				var elements = Array();
-				var ele = document.body.getElementsByTagName('*');
-				for (var i = 0;i < ele.length; i++)
-				{
-					if (ele[i].className == (selector.slice(1)))
-					{	
-						elements.push(ele[i]);						
-					}
-				}
-				this[0] = elements;
-				return this;
-			}
-			else
-			{
-				
-				//must just want tags...
-				var split = selector,
-				elementArray = Array();
-				if (selector.indexOf(":") != -1)
-				{
-					var split = selector.split(/[ :]+?/g);					
-					var ele = el.getElementsByTagName(split[0]);
-				}
-				else
-				{
-						var ele = document.body.getElementsByTagName(selector);
-				}
-				 //this will return a node list so we will sort out the node list into an array before we return it.
-				 for (var i = 0; i < ele.length; i++)
-				 {
-					 elementArray.push(ele[i]);
-				 }							
-				 if (elementArray)
-				 {
-					if (split[1])
-					{
-						var peices = split[1].split(/\(/g);
-						if (peices[0] == "nth-child")
-						{
-							var num = peices[1].replace(')', '');										
-							this[0] = elementArray[parseInt(num)];
-							return this; 
-							
-						}
-					}
-					this[0] = elementArray;
-					return this;
-				 }
-				 else
-				 {
-					 return this;
-				 }
-			}
-			
+			}		
 		},
 		constructor: function (selector, context) 
 		{
 			return new bright.fn.init(selector, context);		
+		},
+		ready: function(fn)
+		{		
+			if (!isReady)
+			{		
+				//my own implementation of jQuerys DomReady function
+				bright.bindReady();
+			}
+			return (isReady)? fn.call(document): fns.push(fn);			
 		},
 		show: function()
 		{
@@ -426,34 +366,14 @@
 		},
 		click: function(e)
 		{
-			 if (this[0] == undefined)
-			 	return false; //to stop some errors from arising	
-				
-		
-		        if (this[0].length > 0) {
-			        //not a single so we will loop the event handler list
-		            if (e) {
-		            	var ele = this[0];
-		                for (var i = 0; i < ele.length; i++) {
-		                    if (ele[i].addEventListener) {
-		                        ele[i].addEventListener('click', e, false);
-		                    } else {
-		                        //for ie8 due to ie not working with addEventListener
-		                        ele[i].attachEvent('onclick', e);
-		                    }
-		                }
-		            }
-		        } else if (this[0]) {       
-		
-		            if (this[0].addEventListener) {
-		                this[0].addEventListener('click', e, false);
+			bright(this[0]).each(function(i, elem){ 							
+		            if (elem.addEventListener) {
+		                elem.addEventListener('click', e, false);
 		            } else {
 		                //for ie8 due to ie not working with addEventListener
-		                this[0].attachEvent('onclick', e);
-		            }
-		        }
-		
-
+		                elem.attachEvent('onclick', e);
+		            }		        
+		      });
 			},
 			slideDown: function (e) {
 	    	//its kind of self expantry it makes an element slide down...
@@ -1108,6 +1028,9 @@
 					url: '#'
 				}
 				
+				if (!bright.modernizer.dragAndDrop)
+					return; //doesn't support drag and drop...
+				
 				var options = bright.extend(defaults, options);
 				bright(this[0]).dragAndDrop({
 						filehandler: function(evt){
@@ -1370,6 +1293,7 @@ bright.extend = bright.fn.extend = function(){
 /* 				*\
 	Base tools
 \*				*/
+var flagsCache = {};
 
 bright.extend({
 	each: function(obj, callback, args)
@@ -1517,7 +1441,7 @@ bright.extend({
 
 		return ret;
 	},
-	access: function( elems, fn, key, value, chainable, emptyGet, pass ) {		
+	access: function( elems, fn, key, value, chainable, emptyGet, pass ) {			
 		var exec,
 			bulk = key == null,
 			i = 0,
@@ -1540,20 +1464,20 @@ bright.extend({
 				// Bulk operations only iterate when executing function values
 				if ( exec ) {
 					exec = fn;
-					fn = function( elem, key, value ) {
+					fn = function( elem, key, value ) {						
 						return exec.call( bright( elem ), value );
 					};
 
 				// Otherwise they run against the entire set
-				} else {
+				} else {					
 					fn.call( elems, value );
 					fn = null;
 				}
 			}
 			
 			if ( fn ) {
-				for (; i < length; i++ ) {
-					fn( elems[i], key, exec ? value.call( elems[i], i, fn( elems[i], key ) ) : value, pass );					
+				for (; i < length; i++ ) {					
+					fn( elems[0][i], key, exec ? value.call( elems[0][i], i, fn( elems[0][i], key ) ) : value, pass );					
 				} 
 			}
 
@@ -1587,8 +1511,7 @@ bright.extend({
 		var ret = results || [];
 
 		if ( array != null ) {
-			// The window, strings (and functions) also have 'length'
-			// Tweaked logic slightly to handle Blackberry 4.7 RegExp issues #6930
+			// The window, strings (and functions) also have 'length'			
 			var type = bright.type( array );
 
 			if ( array.length == null || type === "string" || type === "function" || type === "regexp" || bright.isWindow( array ) ) {
@@ -1630,8 +1553,7 @@ bright.extend({
 	},
 	find: {
 		matches: function(elems, expr)
-		{	
-			
+		{			
 			return false;
 		},
 		matchesSelector: function(expr, elems)
@@ -1639,8 +1561,75 @@ bright.extend({
 			//console.log(expr, elems);
 			return false;
 		}
+	},
+	bindReady: function()
+	{
+		if (w3c)
+		{		
+			
+			document.addEventListener("DOMContentLoaded", bright.contentLoaded, true);
+			window.addEventListener('load',	bright.ready, false);
+		}
+		else
+		{
+			document.attachEvent("onreadystatechange", bright.contentLoaded);
+			window.attachEvent('onload', bright.ready);
+			
+			try {
+				toplevel = window.frameElement === null;
+			} catch(e) {}
+			if ( document.documentElement.doScroll && toplevel ) {
+				bright.scrollCheck();
+			}				
+		}
 	}
 });
+
+
+bright.contentLoaded = function(){
+        (w3c)?
+            document.removeEventListener("DOMContentLoaded", bright.contentLoaded, true) :
+            document.readyState === "complete" && 
+            document.detachEvent("onreadystatechange", bright.contentLoaded);
+        bright.ready();
+}
+
+
+bright.ready = function () {
+    if (isReady)
+	{
+		return;
+	}
+	
+	isReady = true;
+	
+	var len = fns.length,
+	i = 0;
+
+	for ( ; i < len; i++)
+	{
+		fns[i].call(document);
+	}
+}
+
+
+ // If IE is used, use the trick by Diego Perini
+ // http://javascript.nwbox.com/IEContentLoaded/
+bright.scrollCheck = function() {
+	if (isReady) {
+		return;
+	}
+	
+	try {
+		document.documentElement.doScroll("left");
+	}
+	catch(e) {
+		window.setTimeout(arguments.callee, 15);
+		return;
+	}
+	ready();
+}
+
 
 
 /* 								*\
@@ -2492,8 +2481,8 @@ var ralpha = /alpha\([^)]*\)/i,
 	getComputedStyle,
 	currentStyle;
 
-bright.fn.css = function( name, value ) {			
-	return bright.access( this, function( elem, name, value ) {		
+bright.fn.css = function( name, value ) {	
+	return bright.access( this, function( elem, name, value ) {				
 		return value !== undefined ? bright.style( elem, name, value ) : bright.css( elem, name );
 	}, name, value, arguments.length > 1 );
 };
@@ -2538,7 +2527,7 @@ bright.extend({
 
 	// Get and set the style property on a DOM Node
 	style: function( elem, name, value, extra ) {
-		elem = elem[0];
+	
 		// Don't set styles on text and comment nodes
 		if ( !elem || elem.nodeType === 3 || elem.nodeType === 8 || !elem.style ) {			
 			return;
@@ -2633,6 +2622,34 @@ bright.extend({
 		}
 
 		return ret;
+	}
+});
+
+
+/* 						*\
+	Bright.modernizer
+\*						*/
+//this is my own implmentation of the moderzer Library...
+
+bright.extend({
+	modernizer: function()
+	{		
+		return '1.1';
+	}
+});
+
+
+bright.extend(bright.modernizer, {
+	dragAndDrop: function()
+	{
+		var div = bright.modernizer.createElementModer();
+		return ('draggable' in div) || ('ondragstart' in div && 'ondrop' in div);
+		
+	},
+	createElementModer: function()
+	{
+		var div = document.createElement('div')
+		return div;
 	}
 });
 
