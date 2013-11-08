@@ -7,7 +7,7 @@ This is a Library that is very simular to jQuery and has tonnes of functions tha
 to the Bright framework, but at the moment, its just the Bright Library. 
 
 
-Plans:
+<b>Plans:</b>
 <ul>
   <li> Real Time </li>
   <li> Framework </li>
