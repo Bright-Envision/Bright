@@ -7,6 +7,14 @@ This is a Library that is very simular to jQuery and has tonnes of functions tha
 to the Bright framework, but at the moment, its just the Bright Library. 
 
 
+Plans:
+<ul>
+  <li> Real Time </li>
+  <li> Framework </li>
+  <li> socketIO intergration </li>
+  <li> Alot more work with functions </li>
+</ul>
+
 So at the moment it has 
 <ul>
   <li> AJAX </li>
