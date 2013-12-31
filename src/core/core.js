@@ -439,10 +439,10 @@
 	if (!window.bright){
 		window.bright = bright;
 	} else {
-		//hmm bright's already taken??				
+		//hmm window.bright is already taken??				
 		if (window.bright().version && (window.bright().version !== bright().version)){	
 			window['bright' + bright().version] = bright;
-			//this is less obstructive and multiple versions if the library....
+			//this is less obstructive and can have multiple versions of the library....
 		}
 	}
 
