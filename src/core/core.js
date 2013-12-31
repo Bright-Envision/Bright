@@ -346,6 +346,10 @@
 									css3Selector[1] = css3Selector[1].replace(/[ \s]/gi, '');
 									if (css3Selector[1].charAt(0) == '.'){
 										return new findSelectors(css3Selector[1], 'class', parent);										
+									} else if (css3Selector[1].charAt(0) == '#') {
+										return new findSelectors(css3Selector[1], 'id', parent);		
+									} else {
+										return new findSelectors(css3Selector[1], 'element', parent);
 									}
 								} else {
 									return null; //no parent, so we dont do anything....
@@ -363,6 +367,10 @@
 				}
 			} else if (type == 'class') {
 				return findClass(selector, context);
+			} else if (type == 'id') {
+				return findId(selector, context);
+			} else {
+				return findElements(selector, context);
 			}
 		}
 
@@ -386,9 +394,26 @@
 		}
 
 
-		function id(selector, context){
+		function findId(selector, context){
 			//returns the id... we can just use getElementByID..., but we need to filter the id so we removes the spaces and such
 			return context.getElementByID(selector.replace(/[ \s]/gi, ''));
+		}
+
+		function findElements(selector, context){
+			//lets filter the selector...
+			selector = selector.replace(/[ \s]/gi, '');
+			var elements = context.getElementsByTagName(selector);	
+			var elLen = elements.length;
+			var element = Array();
+
+			for (var i = 0; i < elLen; i++){ //loops through all the elements and then checks the classnames
+					element.push(elements[i]);
+			}
+			if (element.length > 1){
+				return element;
+			} else {
+				return element[0] || null;
+			}
 		}
 
 		function specialSelectors(){
