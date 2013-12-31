@@ -1,0 +1,31 @@
+<html>
+	<head>
+		<title> lib </title>
+		<script type="text/javascript" src="core/core.js"></script>
+		<script type="text/javascript">			
+			bright(window).ready(function(){
+
+				bright('.click > .test2').click(function(){
+					alert('special selector');
+				});
+
+				bright('.click').click(function(){
+					alert('test');
+				});
+			});
+		</script>
+	</head>
+	<body>
+		<div class="click">
+			<div class="test2"></div>
+			<div class="test2"></div>
+			<div class="test2"></div>
+			<div class="test2"></div>
+			<div class="test2"></div>
+			<div class="test2"></div>
+			<div class="test2"></div>
+		</div>
+
+
+	</body>
+</html>
