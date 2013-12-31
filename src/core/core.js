@@ -164,10 +164,58 @@
 		return key === undefined || hasOwn.call(obj, key);
 	}
 
+	bright.each = bright.fn.each = function (object, callback, args) {		
+	    var name, i = 0,
+	        length = object.length,
+	        isObj = length === undefined || typeof object == 'function';
+
+	    if (args) {
+	        if (isObj) {
+	            for (name in object) {
+	                if (callback.apply(object[name], args) === false) {
+	                    break;
+	                }
+	            }
+	        } else {
+	            for (; i < length;) {
+	                if (callback.apply(object[i++], args) === false) {
+	                    break;
+	                }
+	            }
+	        }
+
+	        // A special, fast, case for the most common use of each
+	    } else {
+	        if (isObj) {
+	            for (name in object) {
+	                if (callback.call(object[name], name, object[name]) === false) {
+	                    break;
+	                }
+	            }
+	        } else {
+	            for (; i < length;) {
+	                if (callback.call(object[i], i, object[i++]) === false) {
+	                    break;
+	                }
+	            }
+	        }
+	    }
+
+	    return object;
+	}
+	
+
 	bright.extend(bright.fn, {
-		click: function(){
+		click: function(callback){
 			if (w3c){
-				//console.log(this);
+				console.log(this);
+				if (this.elements) {
+					bright.each(this.elements, function(i, val){
+						if (val){
+							val.addEventListener('click', callback, false);
+						}
+					});
+				}
 			} else {
 
 			}
@@ -189,7 +237,12 @@
 		for (var i = 0; i < selectorslength; i++){
 			var currentSelector = selectors[i];
 			if (currentSelector.charAt(0) === '.'){
-				elements.push(findSelectors(currentSelector, 'class', context));
+				var el = findSelectors(currentSelector, 'class', context);
+				if (el.length > 1) {
+					elements = el;
+				} else {
+					elements.push(findSelectors(currentSelector, 'class', context));
+				}
 			}
 		}
 		function findSelectors(selector, type, context){
@@ -204,7 +257,6 @@
 							//so now we need to split the selector, and then we need to also need to 
 							//find the first element e.g .class 
 							var css3Selector = selector.split('>');
-							console.log(css3Selector.length);
 							if (css3Selector.length == 2) {
 								//just an easy css3 selector e.g element > div
 								var parent;
@@ -222,7 +274,7 @@
 								if (parent) {
 									css3Selector[1] = css3Selector[1].replace(/[ \s]/gi, '');
 									if (css3Selector[1].charAt(0) == '.'){
-										return findSelectors(css3Selector[1], 'class', parent);
+										return new findSelectors(css3Selector[1], 'class', parent);										
 									}
 								} else {
 									return null; //no parent, so we dont do anything....
@@ -263,8 +315,9 @@
 		}
 
 
-		function id(){
-
+		function id(selector, context){
+			//returns the id... we can just use getElementByID..., but we need to filter the id so we removes the spaces and such
+			return context.getElementByID(selector.replace(/[ \s]/gi, ''));
 		}
 
 		function specialSelectors(){
