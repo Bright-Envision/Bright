@@ -9,24 +9,34 @@
 
 	bright.fn = bright.prototype = {
 		init: function(selector, context){
+
+
+
 			if (!selector) {return this};		
 
 			if (typeof selector == 'object'){
 				//lets test if it's an bright object				
 				if (this.isSame(selector, window)){ //checks if the selector is the same as the 'window' object
-					this.context = window;
+					this.context = document;
 					this.elements = Array(window);
 					return this;
-				} 
-				return bright.fn;
+				}  else {
+					if (!this.elements){
+						this.elements = [selector];
+						this.context = document;
+					} else {
+						this.elements = this.elements;
+						this.context = this.context;
+					}
+				}
 			} else if (typeof selector == 'string'){
 				this.elements = bright.find(selector);			
 			}
 
+
 			this.context = this.context || context || document;
 			this.selector = this.selector || selector;
 			this.length = this.length || this.elements.length || 0;
-
 			return this;
 		},
 		version: 0.1,
@@ -355,8 +365,8 @@
 
 		var selectors = selector.split(/[,]/);
 		var selectorslength = selectors.length;
-
 		var elements = Array();
+
 
 		for (var i = 0; i < selectorslength; i++){
 			var currentSelector = selectors[i];
