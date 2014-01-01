@@ -294,6 +294,46 @@
 	});
 
 
+	//html5 feature detection, http://diveintohtml5.info/detect.html
+	bright.detection = function(){
+			//this will run through all the detections and return an object with them..
+			var obj = {};
+			obj.canvas = bright.canvas();
+			obj.localstorage = bright.localstorage();
+			obj.audio = bright.audio();
+			obj.video = bright.video();
+			obj.applicationCache = bright.applicationCache();
+			obj.fileApi = bright.fileApi();
+			obj.workers = bright.workers();
+			obj.geolocation = bright.geolocation();
+			return obj;
+	}
+	bright.canvas = function(){
+			return !!document.createElement('canvas').getContext
+	}
+	bright.localstorage = function(){
+			return !!window.localStorage;
+	}
+	bright.audio = function(){
+			return !!window.Audio;
+	}
+	bright.video = function(){
+			return !!document.createElement('video').canPlayType;
+	}
+	bright.applicationCache = function(){
+			return !!window.applicationCache;
+	}
+	bright.fileApi = function(){
+			return !!FileReader;
+	}
+	bright.workers = function(){
+			return !!window.Worker;
+	}	
+	bright.geolocation = function(){
+			return !!navigator.geolocation;
+	}
+
+
 	/* main selector for the new library */
 
 	bright.find = function(selector, context){
