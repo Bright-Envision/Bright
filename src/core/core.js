@@ -294,6 +294,13 @@
 	});
 
 
+	bright.extend(bright.fn, {
+		delay: function(callback, delay){
+			setTimeout(callback, delay);
+		}
+	});	
+
+
 	//html5 feature detection, http://diveintohtml5.info/detect.html
 	bright.detection = function(){
 			//this will run through all the detections and return an object with them..
@@ -331,6 +338,12 @@
 	}	
 	bright.geolocation = function(){
 			return !!navigator.geolocation;
+	}
+	bright.mobile = function(){
+		if( /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ) {
+		 return true;
+		}
+		return false;
 	}
 
 
