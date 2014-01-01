@@ -11,7 +11,9 @@
 
 				bright('.click > div').hover(function(){
 					console.log(this.innerText);
-				});
+				}).delay(function(){
+					alert('test');
+				}, 1000);
 
 				bright('.click').click(function(){
 
