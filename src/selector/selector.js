@@ -1,111 +1,139 @@
-(function(window, undefined) {
-	var selector = {	
-		getClass: function(className){
-			var allTags = this.getTags('*');
-			allTags = allTags.elements;
-			var elements = new Object();
-			if (allTags){
-				var le = allTags.length;						
-				var sClassName = className.split(',');				
-				var len = sClassName.length;
-				var el = elements.elements = Array();				
-				for (var i = 0; i < len; i++){					
-					var cSelector = sClassName[i].replace(/[. ]/gi, ''); //removes the "."
-					elements.elements = selector.selectMultipleClass(cSelector, allTags);						
-				}				
-				return elements;				
+/* main selector for the new library */
+bright.find = function(selector, context){
+	var selector = selector;
+	var context = context || document;
+
+	var selectors = selector.split(/[,]/); // "blue, yellow, red" ["blue", "red", "yellow"]
+	var selectorslength = selectors.length;
+	var elements = Array();
+
+
+	for (var i = 0; i < selectorslength; i++){
+		var currentSelector = selectors[i];
+		if (currentSelector.charAt(0) === '.'){
+			var el = findSelectors(currentSelector, 'class', context);
+			if (el.length > 1) {
+				elements = el;
 			} else {
-				return {
-					elements: Array(),
-					selector: allTags,
-					scope: window
-				}
+				elements.push(findSelectors(currentSelector, 'class', context));
 			}
+		}
+	}
+	function findSelectors(selector, type, context){
 
-		},
-		selectMultipleClass: function(className, allTags){
-			if (className && allTags) {
-				var le = allTags.length;
-				var elements = Array();
-				for (var i = 0; i < le; i++){							
-					if (allTags[i].className == className){
-						elements.push(allTags[i]);
-					}
-				}
-				return elements;
-			}
-		},
-		getElements: function(select){
-			if (select && typeof select == 'string'){
-				//okay now split the selector into corresponding selectors
-				var selectors = select.split(',');
-				var len = selectors.length;
-				var elements = Array();
-				for (var i = 0; i < len; i++){
-					var correctSelector = selectors[i];
-					if (correctSelector.indexOf('<') != -1 || correctSelector.indexOf(':') != -1 || correctSelector.indexOf('>') != -1 || correctSelector.indexOf('+') != -1 || correctSelector.indexOf('[') != -1){
-						//css3 selectors
-						console.log('css3 selector');
-						console.log(correctSelector);
-						var el = selector.css3Selectors(correctSelector);
-					} else if (correctSelector.indexOf('.') != -1 || correctSelector.indexOf('#') != -1) {
-						//simple selectors
-						console.log('css simple selector');
-						console.log(correctSelector);
-						var selectorSplit = correctSelector.split(/[ ]/gi);
-						var selectors = selectorSplit.length;
-						for (var s = 0; s < selectors; s++ ){
-							if (selectorSplit[s].charAt(0) == '.'){
-								//class
-								elements.push(selector.getClass(correctSelector));
-								console.log(el);
-							} else if (selectorSplit[s].charAt(0) == '#') {
-								//id...
-								selector.getID(selectorSplit[s]);
+		var returnArray = Array();
+		var seperator = selector.indexOf(' ');	//.class > .freddy
+
+		if (seperator !== -1){ 
+			if (hasCss3Selector(selector)){
+					if (selector.indexOf('>') != -1){
+						//css3 child selector...
+						//so now we need to split the selector, and then we need to also need to 
+						//find the first element e.g .class 
+						var css3Selector = selector.split('>');
+						if (css3Selector.length == 2) {
+							//just an easy css3 selector e.g element > div
+							var parent;
+							css3Selector[0] = css3Selector[0].replace(/[ \s]/gi, ''); //removes the space
+							if (css3Selector[0].charAt(0) == '.'){
+								parent = findSelectors(css3Selector[0], 'class', context);
+							} else if (css3Selector[0].charAt(0) == '#'){
+								//id so #id > div
+								parent = findSelectors(css3Selector[0], 'id', context);
 							} else {
-
+								//ordanary tag so div
+								parent = findSelectors(css3Selector[0], null, context);
 							}
 
-							
+							if (parent) {
+								css3Selector[1] = css3Selector[1].replace(/[ \s]/gi, '');
+								if (css3Selector[1].charAt(0) == '.'){
+									return new findSelectors(css3Selector[1], 'class', parent);										
+								} else if (css3Selector[1].charAt(0) == '#') {
+									return new findSelectors(css3Selector[1], 'id', parent);		
+								} else {
+									return new findSelectors(css3Selector[1], 'element', parent);
+								}
+							} else {
+								return null; //no parent, so we dont do anything....
+							}
 						}
-					} else {
-						//maybe just a tag...
-						
-						//throw new Error("sector patten not recognised : " + correctSelector);
 					}
+
+			} else {
+				var classes = selector.split(' ');
+				var amountClass = classes.length;
+				for (var i = 0; i < amountClass; i++){
+					console.log(classes[i]);
+					//var ele = findClass(classes[i], context);
 				}
 			}
-		},
-		getId: function(id){
-
-		},
-		getTags: function(selector){
-			if (typeof selector == 'string'){
-				var ele = document.getElementsByTagName(selector);
-				var len = ele.length;
-				var elem = {
-					elements: Array()
-				}			
-				for (var i = 0; i < len; i++){
-					elem.elements.push(ele[i]);
-				}
-				return elem;
-			}
-			return [];
-		},
-		getMultiple: function(selector){
-
-		},
-		customSelector: function(){
-
-		},
-		css3Selectors: function(){
-
-		},
-		getChildren: function(){
-
+		} else if (type == 'class') {
+			return findClass(selector, context);
+		} else if (type == 'id') {
+			return findId(selector, context);
+		} else {
+			return findElements(selector, context);
 		}
+	}
 
-	};
-	window.selector = selector;
-})(window);
+
+	function findClass(selector, context){
+		var elements = context.getElementsByTagName('*'); //gets all the elements on the page
+		var elLen = elements.length;
+		var element = Array();
+		selector = selector.replace(/[.]/gi, ''); //replaces the dots that are/will be in the selector string
+
+		for (var i = 0; i < elLen; i++){ //loops through all the elements and then checks the classnames
+			if (elements[i] && elements[i].className === selector){
+				element.push(elements[i]);
+			}
+		}
+		if (element.length > 1){
+			return element;
+		} else {
+			return element[0] || null;
+		}
+	}
+
+
+	function findId(selector, context){
+		//returns the id... we can just use getElementByID..., but we need to filter the id so we removes the spaces and such
+		return context.getElementByID(selector.replace(/[ \s]/gi, ''));
+	}
+
+	function findElements(selector, context){
+		//lets filter the selector...
+		selector = selector.replace(/[ \s]/gi, '');
+		var elements = context.getElementsByTagName(selector);	
+		var elLen = elements.length;
+		var element = Array();
+
+		for (var i = 0; i < elLen; i++){ //loops through all the elements and then checks the classnames
+				element.push(elements[i]);
+		}
+		if (element.length > 1){
+			return element;
+		} else {
+			return element[0] || null;
+		}
+	}
+
+	function specialSelectors(){
+
+	}
+
+	function css3Selector(){
+
+	}
+
+	function hasCss3Selector(selector){
+		if (selector && (selector.indexOf(':') !== -1 || selector.indexOf(':') != -1 || selector.indexOf('+') != -1 ||
+		selector.indexOf('::') != -1 || selector.indexOf('~'))) {
+			return true;
+		}
+		return false;
+	}
+
+	return elements;
+}	
