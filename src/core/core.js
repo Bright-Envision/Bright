@@ -354,6 +354,16 @@
 		return false;
 	}	
 
+	bright.media = function(){
+		var supports = [];
+		var audio = document.createElement('audio');
+			console.log(audio);
+			/*audio.support = function(){
+
+			}*/
+	}
+
+
 	//now lets expose bright to the world :)
 	if (!window.bright){
 		window.bright = bright;
