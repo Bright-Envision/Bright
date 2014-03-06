@@ -4,6 +4,9 @@
 		<script type="text/javascript" src="core/core.js"></script>
 		<script type="text/javascript" src="selector/selector.js"></script>
 		<script type="text/javascript" src="data/data.js"></script>
+        <script type="text/javascript" src="css/css.js"></script>
+		
+		<script type="text/javascript" src="prototype/prototype.js"></script>
 		<script type="text/javascript">			
 			bright(window).ready(function(){
 
@@ -29,6 +32,13 @@
 				if (bright.ismobile()){
 					alert('mobile');
 				}
+
+                bright('.click').css('width', '32px');
+
+                bright('.click').css({
+                    width: 88,
+                    height: '400px'
+                });
 			});
 		</script>
 		<style>
