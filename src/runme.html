@@ -1,0 +1,96 @@
+<html>
+	<head>
+		<title> lib </title>
+		<script type="text/javascript" src="core/core.js"></script>
+		<script type="text/javascript" src="selector/selector.js"></script>
+		<script type="text/javascript" src="data/data.js"></script>
+        <script type="text/javascript" src="css/css.js"></script>
+		
+		<script type="text/javascript" src="prototype/prototype.js"></script>
+		<script type="text/javascript">			
+			bright(window).ready(function(){
+
+				bright(window).mousemove(function(e){
+					//console.log(e);
+				});
+
+				bright('.click > div').hover(function(){
+					bright(this).data('name', {
+						base: 'core'
+					});
+				}, function(){
+					bright(this).data('data', {
+						woops: 'core'
+					});					
+				});
+
+				bright('.click > div').click(function(){
+					bright(this).removeData('name');
+				});
+
+
+				if (bright.ismobile()){
+					alert('mobile');
+				}
+
+                bright('.click').css('width', '32px');
+
+                bright('.click').css({
+                    width: 88,
+                    height: '400px'
+                });
+			});
+		</script>
+		<style>
+			.test2, .test1 {
+				background: red;
+				width: 100px;
+				float: left;
+				margin: 5px;
+				text-align: center;
+				padding: 10px;
+			}
+
+		</style>
+	</head>
+	<body>
+
+		<div class="click">
+			<div class="test1">
+				<p> dummy </p>
+			</div>
+			<div class="test2">
+					<p> test 1 </p>
+			</div>
+			<div class="test2">
+					<p> test 2 </p>
+			</div>
+			<div class="test2">
+					<p> test 3 </p>
+			</div>
+			<div class="test2">
+					<p> test 4 </p>
+			</div>
+			<div class="test2">
+					<p> test 5 </p>
+			</div>
+			<div class="test2">
+					<p> test 6 </p>
+			</div>
+			<div class="test2">
+					<p> test 7 </p>
+			</div>
+			<div class="test2">
+					<p> test 8 </p>
+			</div>
+		</div>
+
+		<div class="test2">
+				<p> test 9 </p>
+		</div>
+
+
+
+
+	</body>
+</html>
