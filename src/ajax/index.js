@@ -1,4 +1,4 @@
-bright.extends(bright.fn, {
+bright.extend(bright.fn, {
 		ajax: function(options){
 			var defaults = {
 				url: '#',
