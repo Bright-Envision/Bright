@@ -301,6 +301,11 @@
 	});
 
 
+	/* Base ajax */
+
+	bright.ajax = bright.fn.ajax;
+
+
 	bright.extend(bright.fn, {
 		delay: function(callback, delay){
 			setTimeout(callback, delay);

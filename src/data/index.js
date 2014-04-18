@@ -1,5 +1,11 @@
 bright.extend(bright.fn, {	
 	internalCache: {},
+	/*
+	*	Appends data to the object, which is called "internal cache"
+	*	@param: element {obj|node} The element you want to the data to stay
+	*	@param: name {string} The name you want to use
+	*	@param: data {object || string || boolean} This can be any type of information, as it's only setting that value...
+ 	*/
 	data: function(element, name, data){
 		if (!element && !this.elements || !name){
 			return null
@@ -28,6 +34,9 @@ bright.extend(bright.fn, {
 		});
 		return this;
 	},
+	/*
+	*	This does the opposite to addData, it will just remove the data 
+	*/
 	removeData: function(element, name, data){
 		if (!element && !this.elements){
 			return null
