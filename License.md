@@ -2,6 +2,7 @@ License
 --------
 <b>MIT License</b>
 
+=======
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
 "Software"), to deal in the Software without restriction, including
@@ -23,3 +24,5 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 <b>Copyright 2013 Ryan Clough
 http://ryanclough.co.nz</b>
+
+=======
