@@ -1,26 +1,24 @@
 <html>
 	<head>
 		<title> lib </title>
-		<script type="text/javascript" src="dist/Bright.min.js"></script>
-		<script type="text/javascript">			
-			bright(window).ready(function(){
+		<script type="text/javascript" src="dist/Bright.js"></script>
+		<script type="text/javascript">	
 
+			bright(window).ready(function(){
+				
 				bright(window).mousemove(function(e){
 					//console.log(e);
 				});
 
-				bright('.click > div').hover(function(){
+				bright('.click > div.name').click(function(){
 					bright(this).data('name', {
 						base: 'core'
 					});
-				}, function(){
-					bright(this).data('data', {
-						woops: 'core'
-					});					
 				});
 
 				bright('.click > div').click(function(){
-					bright(this).removeData('name');
+					console.log(bright(this).data());
+					//bright(this).removeData('name');
 				});
 
 
@@ -59,12 +57,16 @@
 				padding: 10px;
 			}
 
+			.name {
+				background: blue;
+			}
+
 		</style>
 	</head>
 	<body>
 
 		<div class="click">
-			<div class="test1">
+			<div class="test1 name">
 				<p> dummy </p>
 			</div>
 			<div class="test2">
