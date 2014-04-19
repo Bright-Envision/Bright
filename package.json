@@ -1,0 +1,12 @@
+{
+	"name": "Bright",
+	"version": "0.0.1",
+	"repository": "https://github.com/Bright-Envision/Bright",
+	"devDependencies": {
+	    "grunt-cli": "latest",
+	    "grunt-contrib-uglify": "latest",
+	    "grunt-contrib-concat": "latest",
+	    "grunt-contrib-clean": "latest",
+	    "load-grunt-tasks": "latest"
+	  }
+}
