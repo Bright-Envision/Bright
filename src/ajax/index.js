@@ -1,7 +1,7 @@
 bright.extend(bright.fn, {
 		ajax: function(options){
 			var defaults = {
-				url: '#',
+				url: '/',
 				data: 'null',
 				type: 'post'
 			}
@@ -35,10 +35,24 @@ bright.extend(bright.fn, {
 					}
 				}
 			if (options.type.toUpperCase() == "GET") {
-				xhr.send(null);
-			} else {		
-				xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-				xhr.send(options.data);
+				try {
+					xhr.send(null);
+				} catch (exception){
+					if (options.error){
+						options.error(null, exception.code, exception);
+					}
+				}
+			} else {	
+				try {	
+					xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+					xhr.send(options.data);
+				} catch (exception){
+					if (options.error){
+						options.error(null, exception.code, exception);
+					}
+				}
 			}
 		}
 });
+
+bright.ajax = bright.fn.ajax;
