@@ -27,7 +27,7 @@
 					}
 				}
 			} else if (typeof selector == 'string'){
-				this.elements = bright.find(selector);			
+				this.elements = bright.find(selector, (this.context || document.body));			
 			}
 
 
