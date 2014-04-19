@@ -1,4 +1,4 @@
-bright.extend(bright.fn, {	
+bright.extend(bright.fn, {		
 	internalCache: {},
 	/*
 	*	Appends data to the object, which is called "internal cache"
@@ -7,11 +7,26 @@ bright.extend(bright.fn, {
 	*	@param: data {object || string || boolean} This can be any type of information, as it's only setting that value...
  	*/
 	data: function(element, name, data){
-		if (!element && !this.elements || !name){
-			return null
-		}
-
 		var lib = this;
+		var interalID = bright.uuid;
+
+		if (element && !name && !data){
+			bright.each(this.elements, function(){
+				var actualElement = this;
+				if (lib.internalCache[actualElement]){
+					return lib.internalCache[actualElement][element];
+				}
+			});
+		} else if (!name && !element && !data) {
+			//so hes trying to fetch everything
+			bright.each(this.elements, function(){
+				var actualElement = this;
+				if (lib.internalCache[actualElement]){
+					return lib.internalCache[actualElement];
+				}
+			});
+		}  
+		
 		bright.each(this.elements, function(){
 			var actualElement = this;
 			if (typeof name == 'string'){
