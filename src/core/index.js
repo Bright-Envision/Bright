@@ -212,8 +212,8 @@
 	    return object;
 	}
 
-	
-
+	//random build number
+	bright.uuid = 'Bright'+ (Math.round(Math.ceil(Math.random(0) * 3000) + Math.round(Math.floor(Math.random(0) * 10000)))) + '' + Math.round(Math.ceil(Math.random(0) * 3000) + Math.round(Math.floor(Math.random(0) * 10000)));
 
 
 
