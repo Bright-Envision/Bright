@@ -31,5 +31,5 @@ It will help people building html5 app's/websites as it will have a lot of wrapp
 
 
 =======
-copyright 2014, ryan clough
+copyright 2014
 
