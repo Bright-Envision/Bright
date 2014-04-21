@@ -10,14 +10,16 @@
 					//console.log(e);
 				});
 
-				bright('.click > div.name').click(function(){
-					bright(this).data('name', {
-						base: 'core'
-					});
+				bright('.click > div:first').click(function(){
+					if (!bright(this).data().base){
+						bright(this).data({
+							base: 'core'
+						});
+					}
 				});
 
 				bright('.click > div').click(function(){
-					console.log(bright(this).data());
+					console.log(bright(this).data('base'));
 					//bright(this).removeData('name');
 				});
 
