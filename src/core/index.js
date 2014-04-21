@@ -3,6 +3,9 @@
 	isReady = false,
 	fns = Array();
 
+	rmsPrefix = /^-ms-/,
+	rdashAlpha = /-([\da-z])/gi;
+
 	bright = function(selector, context){
 		return new bright.fn.init(selector, context);
 	}
@@ -27,7 +30,7 @@
 					}
 				}
 			} else if (typeof selector == 'string'){
-				this.elements = bright.find(selector);			
+				this.elements = bright.find(selector, (this.context || document.body));			
 			}
 
 
@@ -212,9 +215,20 @@
 	    return object;
 	}
 
-	
+	//random build number
+	bright.uuid = 'Bright'+ (Math.round(Math.ceil(Math.random(0) * 3000) + Math.round(Math.floor(Math.random(0) * 10000)))) + '' + Math.round(Math.ceil(Math.random(0) * 3000) + Math.round(Math.floor(Math.random(0) * 10000)));
+	bright.guid = 0;
 
+	bright.noop = {};
 
+	//camel casing functions
+	bright.camelCase = function(string){
+		return string.replace(rmsPrefix, "ms-").replace(rdashAlpha, fcamelCase);
+	}
+
+	function fcamelCase(all, letter) {
+   		 return letter.toUpperCase();
+	}
 
 
 	bright.extend(bright.fn, {

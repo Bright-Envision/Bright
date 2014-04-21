@@ -31,5 +31,6 @@ It will help people building html5 app's/websites as it will have a lot of wrapp
 
 
 =======
-copyright 2014
+
+Copyright 2014 - Bright Envision
 
